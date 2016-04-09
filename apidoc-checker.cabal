@@ -10,13 +10,19 @@ maintainer:          chris.d.barrett@me.com
 copyright:           Chris Barrett
 category:            Web
 build-type:          Simple
--- extra-source-files:
 cabal-version:       >=1.10
+data-files:          test/resources/1.json
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Lib
-  build-depends:       base >= 4.7 && < 5
+  exposed-modules:     Apidoc.Spec
+                     , Apidoc.Parser
+                     , Apidoc.Uri
+  build-depends:       base
+                     , aeson
+                     , bytestring
+                     , network-uri
+                     , text
   default-language:    Haskell2010
 
 executable apidoc-checker-exe
@@ -25,6 +31,10 @@ executable apidoc-checker-exe
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
                      , apidoc-checker
+                     , bytestring
+                     , optparse-applicative
+                     , path
+                     , text
   default-language:    Haskell2010
 
 test-suite apidoc-checker-test
@@ -33,6 +43,9 @@ test-suite apidoc-checker-test
   main-is:             Spec.hs
   build-depends:       base
                      , apidoc-checker
+                     , bytestring
+                     , hspec
+                     , transformers
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 
