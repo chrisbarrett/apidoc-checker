@@ -11,10 +11,37 @@ import           Data.Text   (Text)
 import           Network.URI (URI)
 import           Prelude     hiding (Enum)
 
+data TypeRef = TRRemote Namespace TypeName
+             | TRBuiltIn TBuiltIn
+             | TRLocal TypeName
+  deriving (Show, Eq)
+
+data TBuiltIn = TBoolean
+              | TDateIso8601
+              | TDateTimeIso8601
+              | TDecimal
+              | TDouble
+              | TInteger
+              | TLong
+              | TObject
+              | TString
+              | TUnit
+              | TUuid
+  deriving (Show, Eq)
+
 newtype TypeName = TypeName Text
   deriving (Show, Eq)
 
+newtype FieldName = FieldName Text
+  deriving (Show, Eq)
+
 newtype Uri = Uri URI
+  deriving (Show, Eq)
+
+newtype Namespace = Namespace Text
+  deriving (Show, Eq)
+
+newtype ServiceName = ServiceName Text
   deriving (Show, Eq)
 
 data Spec = Spec {
@@ -27,9 +54,9 @@ data Spec = Spec {
   , specImports     :: Maybe [Import]
   , specInfo        :: Maybe Info
   , specModels      :: Maybe (Map TypeName Model)
-  , specName        :: Text
-  , specNamespace   :: Maybe Text
-  , specResources   :: Maybe (Map TypeName Resource)
+  , specName        :: ServiceName
+  , specNamespace   :: Maybe Namespace
+  , specResources   :: Maybe (Map TypeRef Resource)
   , specUnions      :: Maybe (Map TypeName Union)
   } deriving (Show, Eq)
 
@@ -39,14 +66,14 @@ data Apidoc = Apidoc {
 
 data Attribute = Attribute {
     attributeName   :: Text
-  , attributeValues :: Json
+  , attributeValues :: Json ()
   } deriving (Show, Eq)
 
 data Enum = Enum {
     enumAttributes  :: Maybe [Attribute]
   , enumDeprecation :: Maybe Deprecation
   , enumDescription :: Maybe Text
-  , enumPlural      :: Maybe Text
+  , enumPlural      :: Maybe TypeName
   , enumValues      :: [EnumValue]
   } deriving (Show, Eq)
 
@@ -54,17 +81,17 @@ data EnumValue = EnumValue {
     enumValueAttributes  :: Maybe [Attribute]
   , enumValueDeprecation :: Maybe Deprecation
   , enumValueDescription :: Maybe Text
-  , enumValueName        :: Text
+  , enumValueName        :: TypeName
   } deriving (Show, Eq)
 
 data Header = Header {
     headerAttributes  :: Maybe [Attribute]
-  , headerDefault     :: Maybe Json
+  , headerDefault     :: Maybe Text
   , headerDeprecation :: Maybe Deprecation
   , headerDescription :: Maybe Text
   , headerName        :: Text
   , headerRequired    :: Maybe Bool
-  , headerType        :: Text
+  , headerType        :: TypeRef
   } deriving (Show, Eq)
 
 data Import = Import {
@@ -81,7 +108,7 @@ data Model = Model {
   , modelDeprecation :: Maybe Deprecation
   , modelDescription :: Maybe Text
   , modelFields      :: [Field]
-  , modelPlural      :: Maybe Text
+  , modelPlural      :: Maybe TypeName
   } deriving (Show, Eq)
 
 data Resource = Resource {
@@ -93,33 +120,33 @@ data Resource = Resource {
   } deriving (Show, Eq)
 
 data Union = Union {
-    unionName          :: TypeName
-  , unionPlural        :: Text
-  , unionDiscriminator :: Maybe Text
-  , unionDescription   :: Maybe Text
+    unionAttributes    :: Maybe [Attribute]
   , unionDeprecation   :: Maybe Deprecation
+  , unionDescription   :: Maybe Text
+  , unionDiscriminator :: Maybe Text
+  , unionName          :: TypeName
+  , unionPlural        :: Maybe TypeName
   , unionTypes         :: [UnionType]
-  , unionAttributes    :: Maybe [Attribute]
   } deriving (Show, Eq)
 
 data UnionType = UnionType {
-    unionTypeType        :: Text
-  , unionTypeDescription :: Maybe Text
+    unionTypeAttributes  :: Maybe [Attribute]
   , unionTypeDeprecation :: Maybe Deprecation
-  , unionTypeAttributes  :: Maybe [Attribute]
+  , unionTypeDescription :: Maybe Text
+  , unionTypeType        :: TypeRef
   } deriving (Show, Eq)
 
 data Body = Body {
-    bodyType        :: Text
-  , bodyDescription :: Maybe Text
+    bodyAttributes  :: Maybe [Attribute]
   , bodyDeprecation :: Maybe Deprecation
-  , bodyAttributes  :: Maybe [Attribute]
+  , bodyDescription :: Maybe Text
+  , bodyType        :: TypeRef
   } deriving (Show, Eq)
 
 data Contact = Contact {
-    contactName  :: Maybe Text
+    contactEmail :: Maybe Text
+  , contactName  :: Maybe Text
   , contactUrl   :: Maybe Uri
-  , contactEmail :: Maybe Text
   } deriving (Show, Eq)
 
 data Deprecation = Deprecation {
@@ -127,16 +154,16 @@ data Deprecation = Deprecation {
   } deriving (Show, Eq)
 
 data Field = Field {
-    fieldName        :: Text
-  , fieldType        :: Text
-  , fieldDescription :: Maybe Text
+    fieldAttributes  :: Maybe [Attribute]
+  , fieldDefault     :: Maybe Text
   , fieldDeprecation :: Maybe Deprecation
-  , fieldDefault     :: Maybe Json
-  , fieldRequired    :: Bool
-  , fieldMinimum     :: Maybe Integer
-  , fieldMaximum     :: Maybe Integer
+  , fieldDescription :: Maybe Text
   , fieldExample     :: Maybe Text
-  , fieldAttributes  :: Maybe [Attribute]
+  , fieldMaximum     :: Maybe Integer
+  , fieldMinimum     :: Maybe Integer
+  , fieldName        :: FieldName
+  , fieldRequired    :: Maybe Bool
+  , fieldType        :: TypeRef
   } deriving (Show, Eq)
 
 data License = License {
@@ -149,35 +176,35 @@ data Operation = Operation {
   , operationBody        :: Maybe Body
   , operationDeprecation :: Maybe Deprecation
   , operationDescription :: Maybe Text
-  , operationMethod      :: Method
+  , operationMethod      :: HttpMethod
   , operationParameters  :: Maybe [Parameter]
   , operationPath        :: Maybe Text
   , operationResponses   :: Maybe (Map ResponseCode Response)
   } deriving (Show, Eq)
 
-data Method = GET | POST | PUT | PATCH | DELETE | HEAD | CONNECT | OPTIONS | TRACE
+data HttpMethod = GET | POST | PUT | PATCH | DELETE | HEAD | CONNECT | OPTIONS | TRACE
   deriving (Show, Eq)
 
 data ResponseCode = RespInt Integer | RespDefault
   deriving (Show, Eq)
 
 data Response = Response {
-    responseDeprecation :: Deprecation
+    responseDeprecation :: Maybe Deprecation
   , responseDescription :: Maybe Text
-  , responseType        :: Text
+  , responseType        :: TypeRef
   } deriving (Show, Eq)
 
 data Parameter = Parameter {
-    parameterDefault     :: Maybe Json
+    parameterDefault     :: Maybe (Json ())
   , parameterDeprecation :: Maybe Deprecation
   , parameterDescription :: Maybe Text
   , parameterExample     :: Maybe Text
-  , parameterLocation    :: ParameterLocation
+  , parameterLocation    :: Maybe ParameterLocation
   , parameterMaximum     :: Maybe Integer
   , parameterMinimum     :: Maybe Integer
   , parameterName        :: Text
   , parameterRequired    :: Maybe Bool
-  , parameterType        :: Text
+  , parameterType        :: TypeRef
   } deriving (Show, Eq)
 
 data ParameterLocation = Path | Query | Form

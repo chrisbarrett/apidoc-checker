@@ -11,10 +11,9 @@ main = hspec spec
 
 spec :: Spec
 spec =
-    describe "parsing a correctly formed apidoc spec" $ do
-        file <- runIO $ Paths.getDataFileName "test/resources/1.json"
+    describe "parsing an apidoc spec" $ do
+        file <- runIO $ Paths.getDataFileName "test/resources/api.json"
         json <- runIO $ BS.readFile file
         let result = Parser.parse json
         it "parses successfully" $
-          pending
-          -- result `shouldSatisfy` Either.isRight
+          result `shouldSatisfy` Either.isRight
