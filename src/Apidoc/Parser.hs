@@ -1,14 +1,17 @@
 module Apidoc.Parser  where
 
-import           Apidoc.Spec
-import qualified Control.Arrow        as Arrow
-import qualified Data.Aeson           as Aeson
-import qualified Data.ByteString.Lazy as BS
-import           Data.Text            (Text)
-import qualified Data.Text            as Text
+import           Apidoc.DSL                   (Spec)
+import           Apidoc.Json                  (Json)
+import qualified Apidoc.Json                  as Json
+import           Apidoc.Utils                 (resultToEither)
+import           Data.ByteString              as BS
+import qualified Text.PrettyPrint.ANSI.Leijen as PP
+import           Text.Trifecta
 
-data Error = Error Text
-  deriving (Show)
+parse :: BS.ByteString -> Either PP.Doc Spec
+parse s = do
+    json <- Json.parse s
+    resultToEither (parseSpec json)
 
-parse :: BS.ByteString -> Either Error Service
-parse json = Arrow.left (Error . Text.pack) (Aeson.eitherDecode json)
+parseSpec :: Json -> Result Spec
+parseSpec = undefined
