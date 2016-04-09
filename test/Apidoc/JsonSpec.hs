@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes        #-}
 module Apidoc.JsonSpec where
 
 import           Apidoc.Json
@@ -20,11 +21,14 @@ spec = do
               result `shouldSatisfy` Either.isRight
 
         itFailsToParse result =
-              it "fails to parse" $
+              it "fails to runParse" $
                   result `shouldSatisfy` Either.isLeft
 
+        runParse = (fmap.fmap) eraseSpans parse
+
+
     describe "parsing null" $ do
-        let result = parse "null"
+        let result = runParse "null"
         itParsesSuccessfully result
         it "parses to null" $
             result `shouldSatisfy` (\ (Right JNull {}) -> True)
@@ -32,16 +36,16 @@ spec = do
     describe "parsing booleans" $ do
 
         describe "true" $ do
-            let result = parse "true"
+            let result = runParse "true"
             itParsesSuccessfully result
             it "parses to true" $
-                result `shouldSatisfy` (\ (Right (JBool b)) -> b)
+                result `shouldSatisfy` (\ (Right (JBool _ b)) -> b)
 
         describe "false" $ do
-            let result = parse "false"
+            let result = runParse "false"
             itParsesSuccessfully result
             it "parses to false" $
-                result `shouldSatisfy` (\ (Right (JBool b)) -> not b)
+                result `shouldSatisfy` (\ (Right (JBool _ b)) -> not b)
 
     describe "parsing numbers" $ do
 
@@ -57,64 +61,64 @@ spec = do
             isNumber (Right JNumber {}) = True
             isNumber _ = False
 
-            shouldParseToNumber (Right (JNumber result)) expected = result `shouldBe` expected
+            shouldParseToNumber (Right (JNumber _ result)) expected = result `shouldBe` expected
             shouldParseToNumber res _ = error (show res)
 
         describe "integers" $ do
 
             context "zero" $ do
-                let result = parse "0"
+                let result = runParse "0"
                 itParsesToNumber 0 result
 
             context "unsigned" $ do
-                let result = parse "12345"
+                let result = runParse "12345"
                 itParsesToNumber 12345 result
 
             context "unary minus" $ do
-                let result = parse "-12345"
+                let result = runParse "-12345"
                 itParsesToNumber (-12345) result
 
             context "positive exponent" $ do
-                let result = parse "12345e+1"
+                let result = runParse "12345e+1"
                 itParsesToNumber 12345e+1 result
 
             context "negative exponent" $ do
-                let result = parse "12345e-1"
+                let result = runParse "12345e-1"
                 itParsesToNumber 12345e-1 result
 
             context "leading zero" $ do
-                let result = parse "0123"
+                let result = runParse "0123"
                 itFailsToParse result
 
             context "unary plus" $ do
-                let result = parse "+12345"
+                let result = runParse "+12345"
                 itFailsToParse result
 
 
         describe "decimals" $ do
 
             context "zero" $ do
-                let result = parse "0.0"
+                let result = runParse "0.0"
                 itParsesToNumber 0.0 result
 
             context "unsigned" $ do
-                let result = parse "123.45"
+                let result = runParse "123.45"
                 itParsesToNumber 123.45 result
 
             context "unary minus" $ do
-                let result = parse "-123.45"
+                let result = runParse "-123.45"
                 itParsesToNumber (-123.45) result
 
             context "positive exponent" $ do
-                let result = parse "123.45e+1"
+                let result = runParse "123.45e+1"
                 itParsesToNumber 123.45e+1 result
 
             context "negative exponent" $ do
-                let result = parse "123.45e-1"
+                let result = runParse "123.45e-1"
                 itParsesToNumber 123.45e-1 result
 
             context "leading zero" $ do
-                let result = parse "01.23"
+                let result = runParse "01.23"
                 itFailsToParse result
 
     describe "parsing strings" $ do
@@ -131,19 +135,19 @@ spec = do
             isString (Right JString {}) = True
             isString _ = False
 
-            shouldParseToString (Right (JString result)) expected = result `shouldBe` expected
+            shouldParseToString (Right (JString _ result)) expected = result `shouldBe` expected
             shouldParseToString res _ = error (show res)
 
         context "alphabetic string" $ do
-            let result = parse "\"hello\""
+            let result = runParse "\"hello\""
             itParsesToString "hello" result
 
         context "alphanumeric string" $ do
-            let result = parse "\"hello 123\""
+            let result = runParse "\"hello 123\""
             itParsesToString "hello 123" result
 
         context "escape sequences" $ do
-            let result = parse "\"hello\nworld\""
+            let result = runParse "\"hello\nworld\""
             itParsesToString "hello\nworld" result
 
     describe "parsing arrays" $ do
@@ -160,24 +164,24 @@ spec = do
             isArray (Right JArray {}) = True
             isArray _ = False
 
-            shouldParseToArray (Right (JArray result)) expected = result `shouldBe` expected
+            shouldParseToArray (Right (JArray _ result)) expected = result `shouldBe` expected
             shouldParseToArray res _ = error (show res)
 
         context "empty array" $ do
-            let result = parse "[]"
+            let result = runParse "[]"
             itParsesToArray [] result
 
         context "empty array with internal padding" $ do
-            let result = parse "[  ]"
+            let result = runParse "[  ]"
             itParsesToArray [] result
 
         context "singleton array" $ do
-            let result = parse "[1]"
-            itParsesToArray [JNumber 1] result
+            let result = runParse "[1]"
+            itParsesToArray [JNumber () 1] result
 
         context "heterogenous array" $ do
-            let result = parse "[true, null, false]"
-            itParsesToArray [JBool True , JNull , JBool False] result
+            let result = runParse "[true, null, false]"
+            itParsesToArray [JBool () True , JNull (), JBool () False] result
 
     describe "parsing objects" $ do
 
@@ -190,33 +194,36 @@ spec = do
               it "parses to the expected object" $
                   result `shouldParseToObject` expected
 
-            isObject (Right (JObject _)) = True
+            isObject (Right JObject {}) = True
             isObject _ = False
 
-            shouldParseToObject (Right (JObject result)) expected = result `shouldBe` expected
+            shouldParseToObject (Right (JObject _ result)) expected = result `shouldBe` expected
             shouldParseToObject res _ = error (show res)
 
         context "empty object" $ do
-            let result = parse "{}"
+            let result = runParse "{}"
             itParsesToObject mempty result
 
         context "empty object with internal padding" $ do
-            let result = parse "{  }"
+            let result = runParse "{  }"
             itParsesToObject mempty result
 
         context "singleton object" $ do
-            let result = parse "{\"foo\":\"bar\"}"
-                expected = Map.fromList [ ("foo", JString "bar")]
+            let result = runParse "{\"foo\":\"bar\"}"
+                expected = Map.fromList [ (Key () "foo", JString () "bar")]
             itParsesToObject expected result
 
         context "heterogenous object" $ do
-            let result = parse "{\"foo\":\"bar\", \"baz\": null}"
-                expected = Map.fromList [("foo", JString "bar"), ("baz", JNull)]
+            let result = runParse "{\"foo\":\"bar\", \"baz\": null}"
+                expected = Map.fromList
+                           [ (Key () "foo", JString () "bar")
+                           , (Key () "baz", JNull ())
+                           ]
             itParsesToObject expected result
 
     describe "parsing a twitter timeline response" $ do
         let path = "test/resources/twitter-timeline.json"
         file <- runIO (Paths.getDataFileName path)
         json <- runIO (BS.readFile file)
-        let result = parse json
+        let result = runParse json
         itParsesSuccessfully result

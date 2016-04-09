@@ -5,12 +5,11 @@
 --
 module Apidoc.DSL where
 
-import           Apidoc.Json         (Json)
-import           Data.Map            (Map)
-import           Data.Text           (Text)
-import           Network.URI         (URI)
-import           Prelude             hiding (Enum)
-import           Text.Trifecta.Delta (Delta)
+import           Apidoc.Json (Json)
+import           Data.Map    (Map)
+import           Data.Text   (Text)
+import           Network.URI (URI)
+import           Prelude     hiding (Enum)
 
 newtype TypeName = TypeName Text
   deriving (Show, Eq)
@@ -19,141 +18,141 @@ newtype Uri = Uri URI
   deriving (Show, Eq)
 
 data Spec = Spec {
-    specApidoc      :: Maybe (Apidoc, Delta)
-  , specAttributes  :: Maybe [(Attribute, Delta)]
-  , specBaseUrl     :: Maybe (Uri, Delta)
-  , specDescription :: Maybe (Text, Delta)
-  , specEnums       :: Maybe (Map (TypeName, Delta) (Enum, Delta))
-  , specHeaders     :: Maybe [(Header, Delta)]
-  , specImports     :: Maybe [(Import, Delta)]
-  , specInfo        :: Maybe (Info, Delta)
-  , specModels      :: Maybe (Map (TypeName, Delta) (Model, Delta))
-  , specName        :: (Text, Delta)
-  , specNamespace   :: Maybe (Text, Delta)
-  , specResources   :: Maybe (Map (TypeName, Delta) (Resource, Delta))
-  , specUnions      :: Maybe (Map (TypeName, Delta) (Union, Delta))
+    specApidoc      :: Maybe Apidoc
+  , specAttributes  :: Maybe [Attribute]
+  , specBaseUrl     :: Maybe Uri
+  , specDescription :: Maybe Text
+  , specEnums       :: Maybe (Map TypeName Enum)
+  , specHeaders     :: Maybe [Header]
+  , specImports     :: Maybe [Import]
+  , specInfo        :: Maybe Info
+  , specModels      :: Maybe (Map TypeName Model)
+  , specName        :: Text
+  , specNamespace   :: Maybe Text
+  , specResources   :: Maybe (Map TypeName Resource)
+  , specUnions      :: Maybe (Map TypeName Union)
   } deriving (Show, Eq)
 
 data Apidoc = Apidoc {
-    apidocVersion :: (Text, Delta)
+    apidocVersion :: Text
   } deriving (Show, Eq)
 
 data Attribute = Attribute {
-    attributeName   :: (Text, Delta)
-  , attributeValues :: (Json, Delta)
+    attributeName   :: Text
+  , attributeValues :: Json
   } deriving (Show, Eq)
 
 data Enum = Enum {
-    enumAttributes  :: Maybe [(Attribute, Delta)]
-  , enumDeprecation :: Maybe (Deprecation, Delta)
-  , enumDescription :: Maybe (Text, Delta)
-  , enumPlural      :: Maybe (Text, Delta)
-  , enumValues      :: [(EnumValue, Delta)]
+    enumAttributes  :: Maybe [Attribute]
+  , enumDeprecation :: Maybe Deprecation
+  , enumDescription :: Maybe Text
+  , enumPlural      :: Maybe Text
+  , enumValues      :: [EnumValue]
   } deriving (Show, Eq)
 
 data EnumValue = EnumValue {
-    enumValueAttributes  :: Maybe [(Attribute, Delta)]
-  , enumValueDeprecation :: Maybe (Deprecation, Delta)
-  , enumValueDescription :: Maybe (Text, Delta)
-  , enumValueName        :: (Text, Delta)
+    enumValueAttributes  :: Maybe [Attribute]
+  , enumValueDeprecation :: Maybe Deprecation
+  , enumValueDescription :: Maybe Text
+  , enumValueName        :: Text
   } deriving (Show, Eq)
 
 data Header = Header {
-    headerAttributes  :: Maybe [(Attribute, Delta)]
-  , headerDefault     :: Maybe (Json, Delta)
-  , headerDeprecation :: Maybe (Deprecation, Delta)
-  , headerDescription :: Maybe (Text, Delta)
-  , headerName        :: (Text, Delta)
-  , headerRequired    :: Maybe (Bool, Delta)
-  , headerType        :: (Text, Delta)
+    headerAttributes  :: Maybe [Attribute]
+  , headerDefault     :: Maybe Json
+  , headerDeprecation :: Maybe Deprecation
+  , headerDescription :: Maybe Text
+  , headerName        :: Text
+  , headerRequired    :: Maybe Bool
+  , headerType        :: Text
   } deriving (Show, Eq)
 
 data Import = Import {
-    importUri :: (Uri, Delta)
+    importUri :: Uri
   } deriving (Show, Eq)
 
 data Info = Info {
-    infoLicense :: Maybe (License, Delta)
-  , infoContact :: Maybe (Contact, Delta)
+    infoLicense :: Maybe License
+  , infoContact :: Maybe Contact
   } deriving (Show, Eq)
 
 data Model = Model {
-    modelAttributes  :: Maybe [(Attribute, Delta)]
-  , modelDeprecation :: Maybe (Deprecation, Delta)
-  , modelDescription :: Maybe (Text, Delta)
-  , modelFields      :: [(Field, Delta)]
-  , modelPlural      :: Maybe (Text, Delta)
+    modelAttributes  :: Maybe [Attribute]
+  , modelDeprecation :: Maybe Deprecation
+  , modelDescription :: Maybe Text
+  , modelFields      :: [Field]
+  , modelPlural      :: Maybe Text
   } deriving (Show, Eq)
 
 data Resource = Resource {
-    resourceAttributes  :: Maybe [(Attribute, Delta)]
-  , resourceDeprecation :: Maybe (Deprecation, Delta)
-  , resourceDescription :: Maybe (Text, Delta)
-  , resourceOperations  :: [(Operation, Delta)]
-  , resourcePath        :: Maybe (Text, Delta)
+    resourceAttributes  :: Maybe [Attribute]
+  , resourceDeprecation :: Maybe Deprecation
+  , resourceDescription :: Maybe Text
+  , resourceOperations  :: [Operation]
+  , resourcePath        :: Maybe Text
   } deriving (Show, Eq)
 
 data Union = Union {
-    unionName          :: (TypeName, Delta)
-  , unionPlural        :: (Text, Delta)
-  , unionDiscriminator :: Maybe (Text, Delta)
-  , unionDescription   :: Maybe (Text, Delta)
-  , unionDeprecation   :: Maybe (Deprecation, Delta)
-  , unionTypes         :: [(UnionType, Delta)]
-  , unionAttributes    :: Maybe [(Attribute, Delta)]
+    unionName          :: TypeName
+  , unionPlural        :: Text
+  , unionDiscriminator :: Maybe Text
+  , unionDescription   :: Maybe Text
+  , unionDeprecation   :: Maybe Deprecation
+  , unionTypes         :: [UnionType]
+  , unionAttributes    :: Maybe [Attribute]
   } deriving (Show, Eq)
 
 data UnionType = UnionType {
-    unionTypeType        :: (Text, Delta)
-  , unionTypeDescription :: Maybe (Text, Delta)
-  , unionTypeDeprecation :: Maybe (Deprecation, Delta)
-  , unionTypeAttributes  :: Maybe [(Attribute, Delta)]
+    unionTypeType        :: Text
+  , unionTypeDescription :: Maybe Text
+  , unionTypeDeprecation :: Maybe Deprecation
+  , unionTypeAttributes  :: Maybe [Attribute]
   } deriving (Show, Eq)
 
 data Body = Body {
-    bodyType        :: (Text, Delta)
-  , bodyDescription :: Maybe (Text, Delta)
-  , bodyDeprecation :: Maybe (Deprecation, Delta)
-  , bodyAttributes  :: Maybe [(Attribute, Delta)]
+    bodyType        :: Text
+  , bodyDescription :: Maybe Text
+  , bodyDeprecation :: Maybe Deprecation
+  , bodyAttributes  :: Maybe [Attribute]
   } deriving (Show, Eq)
 
 data Contact = Contact {
-    contactName  :: Maybe (Text, Delta)
-  , contactUrl   :: Maybe (Uri, Delta)
-  , contactEmail :: Maybe (Text, Delta)
+    contactName  :: Maybe Text
+  , contactUrl   :: Maybe Uri
+  , contactEmail :: Maybe Text
   } deriving (Show, Eq)
 
 data Deprecation = Deprecation {
-    deprecationDescription :: Maybe (Text, Delta)
+    deprecationDescription :: Maybe Text
   } deriving (Show, Eq)
 
 data Field = Field {
-    fieldName        :: (Text, Delta)
-  , fieldType        :: (Text, Delta)
-  , fieldDescription :: Maybe (Text, Delta)
-  , fieldDeprecation :: Maybe (Deprecation, Delta)
-  , fieldDefault     :: Maybe (Json, Delta)
-  , fieldRequired    :: (Bool, Delta)
-  , fieldMinimum     :: Maybe (Integer, Delta)
-  , fieldMaximum     :: Maybe (Integer, Delta)
-  , fieldExample     :: Maybe (Text, Delta)
-  , fieldAttributes  :: Maybe [(Attribute, Delta)]
+    fieldName        :: Text
+  , fieldType        :: Text
+  , fieldDescription :: Maybe Text
+  , fieldDeprecation :: Maybe Deprecation
+  , fieldDefault     :: Maybe Json
+  , fieldRequired    :: Bool
+  , fieldMinimum     :: Maybe Integer
+  , fieldMaximum     :: Maybe Integer
+  , fieldExample     :: Maybe Text
+  , fieldAttributes  :: Maybe [Attribute]
   } deriving (Show, Eq)
 
 data License = License {
-    licenseName :: (Text, Delta)
-  , licenseUrl  :: Maybe (Uri, Delta)
+    licenseName :: Text
+  , licenseUrl  :: Maybe Uri
   } deriving (Show, Eq)
 
 data Operation = Operation {
-    operationAttributes  :: Maybe [(Attribute, Delta)]
-  , operationBody        :: Maybe (Body, Delta)
-  , operationDeprecation :: Maybe (Deprecation, Delta)
-  , operationDescription :: Maybe (Text, Delta)
-  , operationMethod      :: (Method, Delta)
-  , operationParameters  :: Maybe [(Parameter, Delta)]
-  , operationPath        :: Maybe (Text, Delta)
-  , operationResponses   :: Maybe (Map (ResponseCode, Delta) (Response, Delta))
+    operationAttributes  :: Maybe [Attribute]
+  , operationBody        :: Maybe Body
+  , operationDeprecation :: Maybe Deprecation
+  , operationDescription :: Maybe Text
+  , operationMethod      :: Method
+  , operationParameters  :: Maybe [Parameter]
+  , operationPath        :: Maybe Text
+  , operationResponses   :: Maybe (Map ResponseCode Response)
   } deriving (Show, Eq)
 
 data Method = GET | POST | PUT | PATCH | DELETE | HEAD | CONNECT | OPTIONS | TRACE
@@ -163,22 +162,22 @@ data ResponseCode = RespInt Integer | RespDefault
   deriving (Show, Eq)
 
 data Response = Response {
-    responseDeprecation :: (Deprecation, Delta)
-  , responseDescription :: Maybe (Text, Delta)
-  , responseType        :: (Text, Delta)
+    responseDeprecation :: Deprecation
+  , responseDescription :: Maybe Text
+  , responseType        :: Text
   } deriving (Show, Eq)
 
 data Parameter = Parameter {
-    parameterDefault     :: Maybe (Json, Delta)
-  , parameterDeprecation :: Maybe (Deprecation, Delta)
-  , parameterDescription :: Maybe (Text, Delta)
-  , parameterExample     :: Maybe (Text, Delta)
-  , parameterLocation    :: (ParameterLocation, Delta)
-  , parameterMaximum     :: Maybe (Integer, Delta)
-  , parameterMinimum     :: Maybe (Integer, Delta)
-  , parameterName        :: (Text, Delta)
-  , parameterRequired    :: Maybe (Bool, Delta)
-  , parameterType        :: (Text, Delta)
+    parameterDefault     :: Maybe Json
+  , parameterDeprecation :: Maybe Deprecation
+  , parameterDescription :: Maybe Text
+  , parameterExample     :: Maybe Text
+  , parameterLocation    :: ParameterLocation
+  , parameterMaximum     :: Maybe Integer
+  , parameterMinimum     :: Maybe Integer
+  , parameterName        :: Text
+  , parameterRequired    :: Maybe Bool
+  , parameterType        :: Text
   } deriving (Show, Eq)
 
 data ParameterLocation = Path | Query | Form

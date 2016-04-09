@@ -2,34 +2,42 @@
 -- |Implements a JSON parser that approximately conforms to the spec.
 module Apidoc.Json where
 
-import           Apidoc.Utils                 (resultToEither)
 import           Control.Applicative
-import           Control.Monad                (when)
 import qualified Data.ByteString              as BS
 import qualified Data.Char                    as Char
 import qualified Data.Either                  as Either
-import           Data.Map                     (Map)
-import qualified Data.Map                     as Map
+import           Data.Map.Strict              (Map)
+import qualified Data.Map.Strict              as Map
 import qualified Data.Maybe                   as Maybe
 import           Data.Text                    (Text)
 import qualified Data.Text                    as Text
 import           Text.Parser.LookAhead
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import           Text.Trifecta                hiding (parseString)
-import           Text.Trifecta.Delta
 
-data Json = JObject !(Map Text Json)
-          | JArray ![Json]
-          | JNumber !Double
-          | JString !Text
-          | JBool !Bool
-          | JNull
+-- * Json AST
+--
+-- Each node in the parsed JSON AST is tagged with a 'Span' so that verification
+-- steps can print error messages referring to the original input.
+
+data Json s = JObject s (Map (Key s) (Json s))
+            | JArray  s [Json s]
+            | JNumber s Double
+            | JString s Text
+            | JBool   s Bool
+            | JNull   s
   deriving (Eq, Show)
 
-parse :: BS.ByteString -> Either PP.Doc Json
-parse s = resultToEither (parseByteString (fst <$> parseJson) mempty s)
+data Key s = Key !s !Text
+  deriving (Show, Eq, Ord)
 
-parseJson :: Parser (Json, Delta)
+
+-- * Parsers
+
+parse :: BS.ByteString -> Either PP.Doc (Json Span)
+parse s = resultToEither (parseByteString parseJson mempty s)
+
+parseJson :: Parser (Json Span)
 parseJson = whitespace *> document <* whitespace
     where
       document =  parseNull
@@ -43,48 +51,46 @@ parseJson = whitespace *> document <* whitespace
 whitespace :: Parser ()
 whitespace = spaces <|> skipMany newline <?> "whitespace"
 
-parseNumber, parseString, parseBool, parseNull, parseArray, parseObject :: Parser (Json, Delta)
+parseNumber, parseString, parseBool, parseNull, parseArray, parseObject :: Parser (Json Span)
 
 parseArray = do
-    pos <- position
-    elems <- brackets (whitespace *> commaSep (fst <$> parseJson))
-    pure (JArray elems, pos)
+    (elems :~ s) <- spanned (brackets (whitespace *> commaSep parseJson))
+    pure (JArray s elems)
 
 parseObject = do
-    pos <- position
-    content <- braces (whitespace *> commaSep kvp)
-    pure (JObject (Map.fromList content), pos)
+    (content :~ s) <- spanned (braces (whitespace *> commaSep kvp))
+    pure (JObject s (Map.fromList content))
   where
+    kvp :: Parser (Key Span, Json Span)
     kvp = do
-      (JString label, _) <- whitespace *> parseString <* (whitespace >> char ':')
-      json <- fst <$> parseJson
-      return (label, json)
+      (JString s label) <- whitespace *> parseString <* (whitespace >> char ':')
+      json <- parseJson
+      return (Key s label, json)
 
 parseBool = (do
-    pos <- position
-    b <- (string "true" *> pure True) <|> (string "false" *> pure False)
-    pure (JBool b, pos))
+    let true  = string "true"  *> pure True
+        false = string "false" *> pure False
+    (b :~ s) <- spanned (true <|> false)
+    pure (JBool s b))
     <?> "boolean"
 
 parseNull = do
-    pos <- position
-    text "null" *> pure (JNull, pos)
+    s <- spanning (text "null")
+    pure (JNull s)
 
 parseNumber = do
-    pos <- position
     let notUnaryPlus = lookAhead (try (noneOf "+"))
         zero = char '0' <* notFollowedBy (some digit) >> pure 0
         anyNumeric = Either.either fromIntegral id <$> integerOrDouble
-    n <- notUnaryPlus >> (zero <|> anyNumeric)
-    pure (JNumber n, pos)
+    (n :~ s) <- spanned (notUnaryPlus >> (zero <|> anyNumeric))
+    pure (JNumber s n)
 
 parseString = do
-    pos <- position
     let start = char '"' <?> "start of string (double-quotes)"
         content = escapeSequence <|> anyChar
         end = char '"' <?> "end of string (double-quotes)"
-    str <- start *> content `manyTill` end
-    pure (JString (Text.pack str), pos)
+    (str :~ s) <- spanned (start *> content `manyTill` end)
+    pure (JString s (Text.pack str))
   where
     escapeSequence :: Parser Char
     escapeSequence = do
@@ -109,3 +115,24 @@ parseString = do
       if null code
         then fail "invalid unicode sequence"
         else return $ Char.chr $ read $ "0x" ++ code
+
+
+-- * Utility functions
+
+resultToEither :: Result a -> Either PP.Doc a
+resultToEither (Success x) = Right x
+resultToEither (Failure e) = Left e
+
+eraseSpans :: Json a -> Json ()
+eraseSpans = mapSpans (const ())
+
+mapSpans :: Ord b => (a -> b) -> Json a -> Json b
+mapSpans f (JArray s xs) = JArray (f s) (mapSpans f <$> xs)
+mapSpans f (JNumber s n) = JNumber (f s) n
+mapSpans f (JString s t) = JString (f s) t
+mapSpans f (JBool s b)   = JBool (f s) b
+mapSpans f (JNull s)     = JNull (f s)
+mapSpans f (JObject s m) = JObject (f s) (mapSpans f <$> mapKeySpans f m)
+
+mapKeySpans :: Ord b => (a -> b) -> Map (Key a) v -> Map (Key b) v
+mapKeySpans f = Map.mapKeys (\ (Key s t) -> Key (f s) t)
