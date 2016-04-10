@@ -222,7 +222,7 @@ spec = do
             itParsesToObject expected result
 
     describe "parsing a twitter timeline response" $ do
-        let path = "test/resources/twitter-timeline.json"
+        let path = "resources/twitter-timeline.json"
         file <- runIO (Paths.getDataFileName path)
         json <- runIO (BS.readFile file)
         let result = runParse json

@@ -12,7 +12,7 @@ main = hspec spec
 spec :: Spec
 spec =
     describe "parsing an apidoc spec" $ do
-        file <- runIO $ Paths.getDataFileName "test/resources/api.json"
+        file <- runIO $ Paths.getDataFileName "resources/api.json"
         json <- runIO $ BS.readFile file
         let result = Parser.parse json
         it "parses successfully" $
