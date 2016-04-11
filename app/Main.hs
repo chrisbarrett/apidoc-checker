@@ -6,7 +6,6 @@ import qualified Apidoc.Parser                as Parser
 import qualified Data.ByteString              as BS
 import qualified Data.Validation              as Validation
 import           Options.Applicative
-import qualified Path
 import qualified System.Environment           as Environment
 import qualified System.Exit                  as Exit
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
@@ -15,8 +14,7 @@ main :: IO ()
 main = do
     prog <- Environment.getProgName
     Opts {..} <- execParser (options prog)
-    path <- Path.toFilePath <$> Path.parseRelFile optFile
-    result <- Parser.parse <$> BS.readFile path
+    result <- Parser.parse <$> BS.readFile optFile
     case result of
         Validation.Success _  ->
             putStrLn "Parsed with no errors."
