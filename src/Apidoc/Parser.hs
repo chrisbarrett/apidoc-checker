@@ -1,32 +1,43 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 -- |Implements parsing and verification of apidoc specs.
 module Apidoc.Parser  where
 
 import qualified Apidoc.DSL                   as DSL
 import           Apidoc.Json
 import qualified Apidoc.Json                  as Json
-import           Data.ByteString              as BS
+import qualified Data.ByteString              as BS
+import qualified Data.Map                     as Map
 import           Data.Map.Strict              (Map)
 import qualified Data.Maybe                   as Maybe
 import           Data.Text                    (Text)
 import qualified Data.Text                    as Text
+import qualified Data.Tuple                   as Tuple
+import           Data.Validation              (Validation)
+import qualified Data.Validation              as Validation
 import qualified Network.URI                  as URI
+import           Prelude                      hiding (span)
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import           Text.Read                    (readMaybe)
-import           Text.Trifecta                (Span)
+import           Text.Trifecta                (Span (..))
+import qualified Text.Trifecta                as Trifecta
 
-type Parser a = Json Span -> Either PP.Doc a
-type KeyParser a = Key Span -> Either PP.Doc a
+type Result = Validation PP.Doc
+type Validator a = Json Span -> Result a
+type KeyValidator a = Key Span -> Result a
 
 -- * Parsers
 
 -- |Main entrypoint for the module. Parses a 'ByteString' to a validated
 -- representation of an apidoc spec. Any errors are collected for pretty
 -- printing.
-parse :: BS.ByteString -> Either PP.Doc DSL.Spec
-parse s = Json.parse s >>= parseSpec
+parse :: BS.ByteString -> Result DSL.Spec
+parse s =
+    case Json.parse s of
+      Trifecta.Success js -> parseSpec js
+      Trifecta.Failure e  -> Validation.Failure e
 
-parseSpec :: Parser DSL.Spec
+parseSpec :: Validator DSL.Spec
 parseSpec js =
     DSL.Spec
       <$> optional "apidoc" apidoc js
@@ -43,16 +54,16 @@ parseSpec js =
       <*> optional "resources" (object (keyType typeRef) resource) js
       <*> optional "unions" (object (keyType typeName) union) js
 
-enum :: Parser DSL.Enum
+enum :: Validator DSL.Enum
 enum js =
     DSL.Enum
       <$> optional "attributes" (array attribute) js
       <*> optional "deprecation" deprecation js
       <*> optional "description" text js
       <*> optional "plural" typeName js
-      <*> required "description" (array parseEnumValue) js
+      <*> required "values" (array parseEnumValue) js
 
-parseEnumValue :: Parser DSL.EnumValue
+parseEnumValue :: Validator DSL.EnumValue
 parseEnumValue js =
     DSL.EnumValue
       <$> optional "attributes" (array attribute) js
@@ -60,7 +71,7 @@ parseEnumValue js =
       <*> optional "description" text js
       <*> required "name" typeName js
 
-header :: Parser DSL.Header
+header :: Validator DSL.Header
 header js =
     DSL.Header
       <$> optional "attributes" (array attribute) js
@@ -71,31 +82,31 @@ header js =
       <*> optional "required" bool js
       <*> required "type" typeRef js
 
-import_ :: Parser DSL.Import
+import_ :: Validator DSL.Import
 import_ js =
     DSL.Import
       <$> required "uri" uri js
 
-info :: Parser DSL.Info
+info :: Validator DSL.Info
 info js =
     DSL.Info
       <$> optional "license" license js
       <*> optional "contact" contact js
 
-license :: Parser DSL.License
+license :: Validator DSL.License
 license js =
     DSL.License
       <$> required "name" text js
       <*> optional "url" uri js
 
-contact :: Parser DSL.Contact
+contact :: Validator DSL.Contact
 contact js =
     DSL.Contact
       <$> optional "email" text js
       <*> optional "name" text js
       <*> optional "url" uri js
 
-model :: Parser DSL.Model
+model :: Validator DSL.Model
 model js =
     DSL.Model
       <$> optional "attributes" (array attribute) js
@@ -104,7 +115,7 @@ model js =
       <*> required "fields" (array parseField) js
       <*> optional "plural" typeName js
 
-parseField :: Parser DSL.Field
+parseField :: Validator DSL.Field
 parseField js =
     DSL.Field
       <$> optional "attributes" (array attribute) js
@@ -118,7 +129,7 @@ parseField js =
       <*> optional "required" bool js
       <*> required "type" typeRef js
 
-resource :: Parser DSL.Resource
+resource :: Validator DSL.Resource
 resource js =
     DSL.Resource
       <$> optional "attributes" (array attribute) js
@@ -127,7 +138,7 @@ resource js =
       <*> required "operations" (array operation) js
       <*> optional "path" text js
 
-operation :: Parser DSL.Operation
+operation :: Validator DSL.Operation
 operation js =
     DSL.Operation
       <$> optional "attributes" (array attribute) js
@@ -139,7 +150,7 @@ operation js =
       <*> optional "path" text js
       <*> optional "responses" (object (keyType responseCode) response) js
 
-body :: Parser DSL.Body
+body :: Validator DSL.Body
 body js =
     DSL.Body
       <$> optional "attributes" (array attribute) js
@@ -147,7 +158,7 @@ body js =
       <*> optional "description" text js
       <*> required "type" typeRef js
 
-parameter :: Parser DSL.Parameter
+parameter :: Validator DSL.Parameter
 parameter js =
     DSL.Parameter
       <$> optional "default" anyJson js
@@ -161,16 +172,16 @@ parameter js =
       <*> optional "required" bool js
       <*> required "type" typeRef js
 
-parameterLocation :: Parser DSL.ParameterLocation
+parameterLocation :: Validator DSL.ParameterLocation
 parameterLocation js = do
     str <- text js
     case str of
         "path"  -> pure DSL.Path
         "query" -> pure DSL.Query
         "form"  -> pure DSL.Form
-        _       -> fail "Expected \"path\", \"query\" or \"form\"."
+        _       -> raiseError "Expected \"path\", \"query\" or \"form\"." (spanOf js)
 
-httpMethod :: Parser DSL.HttpMethod
+httpMethod :: Validator DSL.HttpMethod
 httpMethod js = do
     str <- text js
     case str of
@@ -183,35 +194,34 @@ httpMethod js = do
         "CONNECT" -> pure DSL.CONNECT
         "OPTIONS" -> pure DSL.OPTIONS
         "TRACE"   -> pure DSL.TRACE
-        _         -> fail "Expected an HTTP method."
+        _         -> raiseError "Expected an HTTP method." (spanOf js)
 
-responseCode :: Parser DSL.ResponseCode
+responseCode :: Validator DSL.ResponseCode
 responseCode js = do
     str <- text js
     case (str, readMaybe (Text.unpack str)) of
         ("default", _) -> pure DSL.RespDefault
         (_, Just n)    -> pure (DSL.RespInt n)
-        _              -> fail "Expected a valid HTTP status code or \"default\"."
+        _              -> raiseError "Expected a valid HTTP status code or \"default\"." (spanOf js)
 
-response :: Parser DSL.Response
+response :: Validator DSL.Response
 response js =
     DSL.Response
       <$> optional "deprecation" deprecation js
       <*> optional "description" text js
       <*> required "type" typeRef js
 
-union :: Parser DSL.Union
+union :: Validator DSL.Union
 union js =
     DSL.Union
       <$> optional "attributes" (array attribute) js
       <*> optional "deprecation" deprecation js
       <*> optional "description" text js
       <*> optional "discriminator" text js
-      <*> required "name" typeName js
       <*> optional "plural" typeName js
       <*> required "types" (array unionType) js
 
-unionType :: Parser DSL.UnionType
+unionType :: Validator DSL.UnionType
 unionType js =
     DSL.UnionType
       <$> optional "attributes" (array attribute) js
@@ -219,62 +229,42 @@ unionType js =
       <*> optional "description" text js
       <*> required "type" typeRef js
 
-typeName :: Parser DSL.TypeName
+typeName :: Validator DSL.TypeName
 typeName js =
     DSL.TypeName <$> text js
 
-fieldName :: Parser DSL.FieldName
+fieldName :: Validator DSL.FieldName
 fieldName js =
     DSL.FieldName <$> text js
 
-namespace :: Parser DSL.Namespace
+namespace :: Validator DSL.Namespace
 namespace js =
     DSL.Namespace <$> text js
 
-serviceName :: Parser DSL.ServiceName
+serviceName :: Validator DSL.ServiceName
 serviceName js =
     DSL.ServiceName <$> text js
 
-apidoc :: Parser DSL.Apidoc
+apidoc :: Validator DSL.Apidoc
 apidoc js =
     DSL.Apidoc <$> required "version" text js
 
-attribute :: Parser DSL.Attribute
+attribute :: Validator DSL.Attribute
 attribute js =
     DSL.Attribute
       <$> required "name" text js
       <*> required "value" parseJObject js
 
-deprecation :: Parser DSL.Deprecation
+deprecation :: Validator DSL.Deprecation
 deprecation js =
     DSL.Deprecation <$> optional "description" text js
 
-text :: Parser Text
-text (Json.JString _ s) = pure s
-text _ = fail "expected string"
 
-bool :: Parser Bool
-bool (Json.JBool _ b) = pure b
-bool _                = fail "expected boolean"
+-- TODO: parse different kinds of reference types.
+typeRef :: Validator DSL.TypeRef
+typeRef js = DSL.TRLocal <$> typeName js
 
-uri :: Parser DSL.Uri
-uri js = do
-    s <- Text.unpack <$> text js
-    url <- Maybe.fromMaybe (fail "URI") (pure <$> URI.parseURI s)
-    pure (DSL.Uri url)
-
-parseJObject :: Parser (Json ())
-parseJObject o@Json.JObject {} = pure (Json.eraseSpans o)
-parseJObject _ = fail "Expected an object."
-
-typeRef :: Parser DSL.TypeRef
-typeRef js = undefined -- remote <|> builtin <|> local
-  where
-    remote = DSL.TRRemote <$> namespace js <*> typeName js
-    local = DSL.TRLocal <$> typeName js
-    builtin = DSL.TRBuiltIn <$> builtInType js
-
-builtInType :: Parser DSL.TBuiltIn
+builtInType :: Validator DSL.TBuiltIn
 builtInType js = do
     res <- text js
     case res of
@@ -287,32 +277,99 @@ builtInType js = do
         "string"  -> pure DSL.TString
         "unit"    -> pure DSL.TUnit
         "uuid"    -> pure DSL.TUuid
-        _         -> fail "Not a built-in type"
+        s -> typeError (Expected "built-in type") (Actual s) (spanOf js)
 
+-- * Notes
+
+raiseError :: Text -> Span -> Result a
+raiseError msg (Span start end t) =
+    let caret = Trifecta.renderingCaret start t
+        span = Trifecta.addSpan start end caret
+        err = Trifecta.failed (Text.unpack msg)
+    in
+      Validation.Failure $ Trifecta.explain span err
+
+requiredKeyMissing :: Text -> Span -> Result a
+requiredKeyMissing k (Span start _ t) =
+    let caret = Trifecta.renderingCaret start t
+        msg = Text.concat ["Object does not have required key \"" , k , "\""]
+        err = Trifecta.failed (Text.unpack msg)
+    in
+      Validation.Failure $ Trifecta.explain caret err
+
+newtype Expected = Expected Text
+newtype Actual = Actual Text
+
+typeError :: Expected -> Actual -> Span -> Result a
+typeError (Expected expected) (Actual actual) (Span start end t) =
+    let caret = Trifecta.renderingCaret start t
+        span = Trifecta.addSpan start end caret
+        msg = Text.concat ["Type error: Expected \"", expected, "\", but got \"", actual, "\""]
+        err = Trifecta.failed (Text.unpack msg)
+    in
+      Validation.Failure $ Trifecta.explain span err
 
 -- * Utilities
 
-keyType :: Parser a -> KeyParser a
-keyType = undefined
+-- |Map a parser over JSON strings to parsing JSON object keys.
+keyType :: Validator a -> KeyValidator a
+keyType p (Key s t) = p (JString s t)
 
-array :: Parser a -> Parser [a]
-array p (JArray _ xs) = sequence (p <$> xs)
-array _ _             = fail "Expected an array."
+array :: Validator a -> Validator [a]
+array p (JArray _ xs) = mapM p xs
+array _ js = typeError (Expected "array") (Actual (typeOf js)) (spanOf js)
 
-object :: KeyParser k -> Parser v -> Parser (Map k v)
-object pk pv (JObject _ m) = undefined
-object _ _ _ = fail "Expected an object."
+object :: Ord k => KeyValidator k -> Validator v -> Validator (Map k v)
+object pk pv (JObject _ m) = mapKeysM pk m >>= traverse pv
+object _ _ js = typeError (Expected "object") (Actual (typeOf js)) (spanOf js)
 
-required :: Text -> Parser a -> Parser a
-required js = undefined
+text :: Validator Text
+text (Json.JString _ s) = pure s
+text js = typeError (Expected "string") (Actual (typeOf js)) (spanOf js)
 
-optional :: Text -> Parser a -> Parser (Maybe a)
-optional js = undefined
+bool :: Validator Bool
+bool (Json.JBool _ b) = pure b
+bool js = typeError (Expected "boolean") (Actual (typeOf js)) (spanOf js)
 
-anyJson :: Parser (Json ())
+uri :: Validator DSL.Uri
+uri js = do
+    s <- Text.unpack <$> text js
+    url <- Maybe.fromMaybe (raiseError "Invalid URI" (spanOf js)) (pure <$> URI.parseURI s)
+    pure (DSL.Uri url)
+
+parseJObject :: Validator (Json ())
+parseJObject o@Json.JObject {} = pure (Json.eraseSpans o)
+parseJObject js = typeError (Expected "object") (Actual (typeOf js)) (spanOf js)
+
+mapKeysM :: (Monad m, Ord b) => (a -> m b) -> Map a v -> m (Map b v)
+mapKeysM f m = do
+    let swapped = Tuple.swap <$> Map.toList m
+    xs <- (traverse.traverse) f swapped
+    pure (Map.fromList (Tuple.swap <$> xs))
+
+required :: Text -> Validator a -> Validator a
+required k p (JObject s m) =
+    let stringKeys = Map.mapKeys keyLabel m
+    in case Map.lookup k stringKeys of
+         Just js -> p js
+         Nothing -> requiredKeyMissing k s
+
+required _  _  js = typeError (Expected "object") (Actual (typeOf js)) (spanOf js)
+
+
+optional :: Text -> Validator a -> Validator (Maybe a)
+optional k p (JObject _ m) =
+    let stringKeys = Map.mapKeys keyLabel m
+    in case Map.lookup k stringKeys of
+         Just js -> Just <$> p js
+         Nothing -> pure Nothing
+
+optional _  _  js = typeError (Expected "object") (Actual (typeOf js)) (spanOf js)
+
+anyJson :: Validator (Json ())
 anyJson = pure . Json.eraseSpans
 
-natural :: Parser Integer
+natural :: Validator Integer
 natural (Json.JNumber _ n)
     | n >= 0 && n == fromInteger (round n) = pure (round n)
-natural _ = fail "Expected a whole number 0 or greater."
+natural js = raiseError "Expected a whole number 0 or greater" (spanOf js)

@@ -4,6 +4,7 @@ module Main where
 
 import qualified Apidoc.Parser                as Parser
 import qualified Data.ByteString              as BS
+import qualified Data.Validation              as Validation
 import           Options.Applicative
 import qualified Path
 import qualified System.Environment           as Environment
@@ -14,12 +15,12 @@ main :: IO ()
 main = do
     prog <- Environment.getProgName
     Opts {..} <- execParser (options prog)
-    absPath <- Path.toFilePath <$> Path.parseAbsFile optFile
-    result <- Parser.parse <$> BS.readFile absPath
+    path <- Path.toFilePath <$> Path.parseRelFile optFile
+    result <- Parser.parse <$> BS.readFile path
     case result of
-        Right _  ->
+        Validation.Success _  ->
             putStrLn "Parsed with no errors."
-        Left errs -> do
+        Validation.Failure errs -> do
             PP.putDoc errs
             Exit.exitFailure
 

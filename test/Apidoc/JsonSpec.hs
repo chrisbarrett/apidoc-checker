@@ -24,7 +24,7 @@ spec = do
               it "fails to runParse" $
                   result `shouldSatisfy` Either.isLeft
 
-        runParse = (fmap.fmap) eraseSpans parse
+        runParse = (fmap.fmap) eraseSpans parseEither
 
 
     describe "parsing null" $ do

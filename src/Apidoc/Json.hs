@@ -28,14 +28,18 @@ data Json s = JObject s (Map (Key s) (Json s))
             | JNull   s
   deriving (Eq, Show)
 
-data Key s = Key !s !Text
-  deriving (Show, Eq, Ord)
-
+data Key s = Key {
+    keySpan  :: !s
+  , keyLabel :: !Text
+  } deriving (Show, Eq, Ord)
 
 -- * Parsers
 
-parse :: BS.ByteString -> Either PP.Doc (Json Span)
-parse s = resultToEither (parseByteString parseJson mempty s)
+parse :: BS.ByteString -> Result (Json Span)
+parse = parseByteString parseJson mempty
+
+parseEither :: BS.ByteString -> Either PP.Doc (Json Span)
+parseEither s = resultToEither (parse s)
 
 parseJson :: Parser (Json Span)
 parseJson = whitespace *> document <* whitespace
@@ -136,3 +140,19 @@ mapSpans f (JObject s m) = JObject (f s) (mapSpans f <$> mapKeySpans f m)
 
 mapKeySpans :: Ord b => (a -> b) -> Map (Key a) v -> Map (Key b) v
 mapKeySpans f = Map.mapKeys (\ (Key s t) -> Key (f s) t)
+
+spanOf :: Json s -> s
+spanOf (JObject s _) = s
+spanOf (JArray  s _) = s
+spanOf (JNumber s _) = s
+spanOf (JString s _) = s
+spanOf (JBool   s _) = s
+spanOf (JNull   s)   = s
+
+typeOf :: Json s -> Text
+typeOf JObject {} = "object"
+typeOf JArray  {} = "array"
+typeOf JNumber {} = "number"
+typeOf JString {} = "string"
+typeOf JBool   {} = "bool"
+typeOf JNull   {} = "null"

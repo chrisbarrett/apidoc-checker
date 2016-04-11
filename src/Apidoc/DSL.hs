@@ -14,7 +14,7 @@ import           Prelude     hiding (Enum)
 data TypeRef = TRRemote Namespace TypeName
              | TRBuiltIn TBuiltIn
              | TRLocal TypeName
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 data TBuiltIn = TBoolean
               | TDateIso8601
@@ -27,22 +27,22 @@ data TBuiltIn = TBoolean
               | TString
               | TUnit
               | TUuid
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 newtype TypeName = TypeName Text
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 newtype FieldName = FieldName Text
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 newtype Uri = Uri URI
   deriving (Show, Eq)
 
 newtype Namespace = Namespace Text
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 newtype ServiceName = ServiceName Text
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 data Spec = Spec {
     specApidoc      :: Maybe Apidoc
@@ -124,7 +124,6 @@ data Union = Union {
   , unionDeprecation   :: Maybe Deprecation
   , unionDescription   :: Maybe Text
   , unionDiscriminator :: Maybe Text
-  , unionName          :: TypeName
   , unionPlural        :: Maybe TypeName
   , unionTypes         :: [UnionType]
   } deriving (Show, Eq)
@@ -183,10 +182,10 @@ data Operation = Operation {
   } deriving (Show, Eq)
 
 data HttpMethod = GET | POST | PUT | PATCH | DELETE | HEAD | CONNECT | OPTIONS | TRACE
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 data ResponseCode = RespInt Integer | RespDefault
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
 
 data Response = Response {
     responseDeprecation :: Maybe Deprecation
@@ -208,4 +207,4 @@ data Parameter = Parameter {
   } deriving (Show, Eq)
 
 data ParameterLocation = Path | Query | Form
-  deriving (Show, Eq)
+  deriving (Show, Eq, Ord)
