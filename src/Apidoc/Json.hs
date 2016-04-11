@@ -3,6 +3,7 @@
 module Apidoc.Json where
 
 import           Control.Applicative
+import           Control.Monad.IO.Class       (MonadIO)
 import qualified Data.ByteString              as BS
 import qualified Data.Char                    as Char
 import qualified Data.Either                  as Either
@@ -35,11 +36,12 @@ data Key s = Key {
 
 -- * Parsers
 
-parse :: BS.ByteString -> Result (Json Span)
-parse = parseByteString parseJson mempty
+parseFile :: MonadIO m => FilePath -> m (Result (Json Span))
+parseFile = parseFromFileEx parseJson
 
 parseEither :: BS.ByteString -> Either PP.Doc (Json Span)
-parseEither s = resultToEither (parse s)
+parseEither s = resultToEither (parseByteString parseJson mempty s)
+
 
 parseJson :: Parser (Json Span)
 parseJson = whitespace *> document <* whitespace

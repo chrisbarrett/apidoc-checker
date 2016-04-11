@@ -6,7 +6,7 @@ module Apidoc.Parser  where
 import qualified Apidoc.DSL                   as DSL
 import           Apidoc.Json
 import qualified Apidoc.Json                  as Json
-import qualified Data.ByteString              as BS
+import           Control.Monad.IO.Class       (MonadIO)
 import qualified Data.Map                     as Map
 import           Data.Map.Strict              (Map)
 import qualified Data.Maybe                   as Maybe
@@ -28,14 +28,15 @@ type KeyValidator a = Key Span -> Result a
 
 -- * Parsers
 
--- |Main entrypoint for the module. Parses a 'ByteString' to a validated
+-- |Main entrypoint for the module. Parses the given file to a validated
 -- representation of an apidoc spec. Any errors are collected for pretty
 -- printing.
-parse :: BS.ByteString -> Result DSL.Spec
-parse s =
-    case Json.parse s of
-      Trifecta.Success js -> parseSpec js
-      Trifecta.Failure e  -> Validation.Failure e
+parseFile :: MonadIO m => FilePath -> m (Result DSL.Spec)
+parseFile fp = do
+    js <- Json.parseFile fp
+    case js of
+      Trifecta.Success js' -> pure (parseSpec js')
+      Trifecta.Failure e  -> pure (Validation.Failure e)
 
 parseSpec :: Validator DSL.Spec
 parseSpec js =
@@ -304,7 +305,7 @@ typeError :: Expected -> Actual -> Span -> Result a
 typeError (Expected expected) (Actual actual) (Span start end t) =
     let caret = Trifecta.renderingCaret start t
         span = Trifecta.addSpan start end caret
-        msg = Text.concat ["Type error: Expected \"", expected, "\", but got \"", actual, "\""]
+        msg = Text.concat ["Expected \"", expected, "\", but got \"", actual, "\""]
         err = Trifecta.failed (Text.unpack msg)
     in
       Validation.Failure $ Trifecta.explain span err

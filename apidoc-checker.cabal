@@ -25,6 +25,7 @@ library
                      , network-uri
                      , parsers
                      , text
+                     , transformers
                      , trifecta
                      , validation
   default-language:    Haskell2010

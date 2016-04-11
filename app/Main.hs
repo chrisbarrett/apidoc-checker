@@ -3,7 +3,6 @@
 module Main where
 
 import qualified Apidoc.Parser                as Parser
-import qualified Data.ByteString              as BS
 import qualified Data.Validation              as Validation
 import           Options.Applicative
 import qualified System.Environment           as Environment
@@ -14,7 +13,7 @@ main :: IO ()
 main = do
     prog <- Environment.getProgName
     Opts {..} <- execParser (options prog)
-    result <- Parser.parse <$> BS.readFile optFile
+    result <- Parser.parseFile optFile
     case result of
         Validation.Success _  ->
             putStrLn "Parsed with no errors."
