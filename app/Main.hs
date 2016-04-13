@@ -7,6 +7,7 @@ import qualified Data.Validation              as Validation
 import           Options.Applicative
 import qualified System.Environment           as Environment
 import qualified System.Exit                  as Exit
+import           System.IO                    (stdout)
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 main :: IO ()
@@ -18,7 +19,8 @@ main = do
         Validation.Success _  ->
             putStrLn "Parsed with no errors."
         Validation.Failure errs -> do
-            PP.putDoc $ if optNoColour then PP.plain errs else errs
+            let doc = if optNoColour then PP.plain errs else errs
+            PP.displayIO stdout (PP.renderPretty 1 10000 doc)
             Exit.exitFailure
 
 -- * Option parsing

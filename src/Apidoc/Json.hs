@@ -3,7 +3,7 @@
 module Apidoc.Json where
 
 import           Control.Applicative
-import           Control.Monad.IO.Class       (MonadIO)
+import           Control.Monad.Trans          (MonadIO)
 import qualified Data.ByteString              as BS
 import qualified Data.Char                    as Char
 import qualified Data.Either                  as Either

@@ -22,10 +22,11 @@ library
                      , ansi-wl-pprint
                      , bytestring
                      , containers
+                     , lens
+                     , mtl
                      , network-uri
                      , parsers
                      , text
-                     , transformers
                      , trifecta
                      , validation
   default-language:    Haskell2010
@@ -53,7 +54,6 @@ test-suite apidoc-checker-test
                      , bytestring
                      , containers
                      , hspec
-                     , transformers
                      , validation
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
