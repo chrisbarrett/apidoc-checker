@@ -22,6 +22,7 @@ library
                      , ansi-wl-pprint
                      , bytestring
                      , containers
+                     , edit-distance
                      , lens
                      , mtl
                      , network-uri

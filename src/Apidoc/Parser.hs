@@ -2,6 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
+{-# LANGUAGE ViewPatterns               #-}
 -- |Implements parsing and verification of apidoc specs.
 module Apidoc.Parser (
 
@@ -23,6 +24,7 @@ import qualified Control.Monad.State.Strict   as State
 import           Control.Monad.Trans          (MonadIO)
 import qualified Data.Maybe                   as Maybe
 
+import qualified Data.List                    as List
 import qualified Data.Map                     as Map
 import           Data.Map.Strict              (Map)
 import           Data.Monoid
@@ -31,6 +33,7 @@ import qualified Data.Text                    as Text
 import           Data.Validation              (Validation, _Failure)
 import qualified Network.URI                  as URI
 import           Prelude                      hiding (span)
+import qualified Text.EditDistance            as EditDistance
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import           Text.Read                    (readMaybe)
 import           Text.Trifecta                (Span (..))
@@ -298,6 +301,7 @@ raiseError msg (Span start end t) =
     in
       _Failure # (Trifecta.explain span err <> newlines)
 
+
 requiredKeyMissing :: Text -> Span -> Result a
 requiredKeyMissing k (Span start _ t) =
     let caret = Trifecta.renderingCaret start t
@@ -306,13 +310,30 @@ requiredKeyMissing k (Span start _ t) =
     in
       _Failure # (Trifecta.explain caret err <> newlines)
 
-unexpectedKey :: Key Span -> Result a
-unexpectedKey (Key (Span start _ t) k) =
+
+unexpectedKey :: Key Span -> Candidates -> Result a
+unexpectedKey (Key (Span start _ t) k) cs =
     let caret = Trifecta.renderingCaret start t
-        msg = Text.concat ["Unexpected key: \"" , k , "\"."]
+        msg = Text.concat ["Unexpected key: \"" , k , "\".", suggestionClause k cs]
         err = Trifecta.failed (Text.unpack msg)
     in
       _Failure # (Trifecta.explain caret err <> newlines)
+
+
+newtype Candidates = Candidates [Text]
+
+suggestionClause :: Text -> Candidates -> Text
+suggestionClause t (Candidates cs) =
+    let distances = map (\s -> (distance t s, s)) cs
+        best = Maybe.listToMaybe $ List.sortOn fst distances
+    in case best of
+         Just (score, c) | score < maximumEditDistance -> Text.concat [" Did you mean \"", c, "\"?"]
+         _ -> ""
+  where
+    maximumEditDistance = 5
+
+    distance (Text.unpack -> t1) (Text.unpack -> t2) =
+        EditDistance.restrictedDamerauLevenshteinDistance EditDistance.defaultEditCosts t1 t2
 
 newtype Expected = Expected Text
 newtype Actual = Actual Text
@@ -418,10 +439,11 @@ validator p js@(JObject _ m) = do
     validateKeys expectedKeys *> pure output
   where
     validateKeys :: [Text] -> Result ()
-    validateKeys expectedKeys = do
+    validateKeys expectedKeys =
         let actualKeys = Map.keys m
             isUnexpectedKey k = keyLabel k `notElem` expectedKeys
-        traverse unexpectedKey (filter isUnexpectedKey actualKeys) *> pure ()
+            keyError k = unexpectedKey k (Candidates expectedKeys)
+        in traverse keyError (filter isUnexpectedKey actualKeys) *> pure ()
 
 validator _ js =
     typeError (Expected "object") (Actual (typeOf js)) (spanOf js)
