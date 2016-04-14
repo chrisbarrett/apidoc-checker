@@ -44,13 +44,13 @@ type Validator a = Json Span -> Result a
 type KeyValidator a = Key Span  -> Result a
 
 
-newtype DslValidator a = DslValidator {
+newtype DslMonad a = DslMonad {
     _unvalidator :: StateT [Text]
                           (ReaderT (Json Span) Result)
                           a
     } deriving (Functor, Applicative, Monad, MonadReader (Json Span), MonadState [Text])
 
-runValidator :: DslValidator a -> Json Span -> Result (a, [Text])
+runValidator :: DslMonad a -> Json Span -> Result (a, [Text])
 runValidator p = Reader.runReaderT (State.runStateT (_unvalidator p) [])
 
 -- * Parsers
@@ -392,7 +392,7 @@ parseJObject o@Json.JObject {} =
 parseJObject js =
     typeError (Expected "object") (Actual (typeOf js)) (spanOf js)
 
-required :: Text -> Validator a -> DslValidator a
+required :: Text -> Validator a -> DslMonad a
 required k p = do
     State.modify ((:) k)
     inputJs <- Reader.ask
@@ -405,7 +405,7 @@ required k p = do
       _ ->
           liftValidation $ typeError (Expected "object") (Actual (typeOf inputJs)) (spanOf inputJs)
 
-optional :: Text -> Validator a -> DslValidator (Maybe a)
+optional :: Text -> Validator a -> DslMonad (Maybe a)
 optional k p = do
     State.modify ((:) k)
     inputJs <- Reader.ask
@@ -418,8 +418,8 @@ optional k p = do
       _ ->
           liftValidation $ typeError (Expected "object") (Actual (typeOf inputJs)) (spanOf inputJs)
 
-liftValidation :: Validation Err a -> DslValidator a
-liftValidation = DslValidator . State.lift . Reader.lift
+liftValidation :: Validation Err a -> DslMonad a
+liftValidation = DslMonad . State.lift . Reader.lift
 
 anyJson :: Validator (Json ())
 anyJson = pure . Json.eraseSpans
@@ -431,7 +431,7 @@ naturalNumber js =
     raiseError "Expected a whole number 0 or greater" (spanOf js)
 
 
-validator :: DslValidator a -> Validator a
+validator :: DslMonad a -> Validator a
 validator p js@(JObject _ m) = do
     (output, expectedKeys) <- runValidator p js
     validateKeys expectedKeys *> pure output
