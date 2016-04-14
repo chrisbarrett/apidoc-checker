@@ -36,8 +36,8 @@
   :command ("apidoc-checker" "--plain" source)
   :error-patterns
   ((error line-start (file-name) ":" line ":" column ": error: " (message) line-end)
-   (error line-start (file-name) ":" line ":" column ": warning: " (message) line-end)
-   (error line-start (file-name) ":" line ":" column ": note: " (message) line-end))
+   (warning line-start (file-name) ":" line ":" column ": warning: " (message) line-end)
+   (info line-start (file-name) ":" line ":" column ": note: " (message) line-end))
   :modes apidoc-mode)
 
 (add-to-list 'flycheck-checkers 'apidoc)
