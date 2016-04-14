@@ -1,4 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
 -- |Models representing the apidoc specification.
 --
 --    http://apidoc.me/bryzek/apidoc-spec/latest

@@ -1,5 +1,4 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RankNTypes        #-}
 module Apidoc.JsonSpec where
 
 import           Apidoc.Json
