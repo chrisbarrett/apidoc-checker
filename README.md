@@ -38,14 +38,10 @@ Available options:
    already done for you in Spacemacs.
 
 2. Run `M-x package-install-file apidoc-checker/elisp/apidoc-checker.el` to
-   install the package and its dependencies
+   install the package and its dependencies.
 
-3. Add the following to your Emacs configuration:
-
-    ```lisp
-    (with-eval-after-load 'flycheck
-      (require 'apidoc-checker))
-    ```
+When you visit api.json files you should now automatically enter `apidoc-mode`
+and get those *sweet sweet* error squiggles.
 
 ## Contributions
 
