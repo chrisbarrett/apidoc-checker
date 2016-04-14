@@ -301,7 +301,7 @@ raiseError msg (Span start end t) =
 requiredKeyMissing :: Text -> Span -> Result a
 requiredKeyMissing k (Span start _ t) =
     let caret = Trifecta.renderingCaret start t
-        msg = Text.concat ["Object does not have required key \"" , k , "\""]
+        msg = Text.concat ["Object does not have required key \"" , k , "\"."]
         err = Trifecta.failed (Text.unpack msg)
     in
       _Failure # (Trifecta.explain caret err <> newlines)
@@ -309,7 +309,7 @@ requiredKeyMissing k (Span start _ t) =
 unexpectedKey :: Key Span -> Result a
 unexpectedKey (Key (Span start _ t) k) =
     let caret = Trifecta.renderingCaret start t
-        msg = Text.concat ["Unexpected key: \"" , k , "\""]
+        msg = Text.concat ["Unexpected key: \"" , k , "\"."]
         err = Trifecta.failed (Text.unpack msg)
     in
       _Failure # (Trifecta.explain caret err <> newlines)
@@ -321,7 +321,7 @@ typeError :: Expected -> Actual -> Span -> Result a
 typeError (Expected expected) (Actual actual) (Span start end t) =
     let caret = Trifecta.renderingCaret start t
         span = Trifecta.addSpan start end caret
-        msg = Text.concat ["Expected \"", expected, "\", but got \"", actual, "\""]
+        msg = Text.concat ["Expected \"", expected, "\", but got \"", actual, "\"."]
         err = Trifecta.failed (Text.unpack msg)
     in
       _Failure # (Trifecta.explain span err <> newlines)
