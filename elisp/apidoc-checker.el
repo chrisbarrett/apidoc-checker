@@ -4,6 +4,8 @@
 
 ;; Package-Requires: ((flycheck "26-cvs") (js2-mode "20150909"))
 
+;; Version: 0.1.0
+
 ;; Author: Chris Barrett <chris.d.barrett@me.com>
 
 ;; This program is free software; you can redistribute it and/or modify
