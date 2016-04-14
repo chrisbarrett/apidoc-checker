@@ -45,12 +45,14 @@
 ;;;###autoload
 (define-derived-mode apidoc-mode js2-mode "apidoc")
 
+;;;###autoload
 (defun apidoc-checker-maybe-enable-apidoc-mode ()
   (when (and (buffer-file-name)
              (-contains? '("api.json" "apidoc.json") (file-name-nondirectory (buffer-file-name))))
     (unless (derived-mode-p 'apidoc-mode)
       (apidoc-mode))))
 
+;;;###autoload
 (add-hook 'js2-mode-hook #'apidoc-checker-maybe-enable-apidoc-mode)
 
 (provide 'apidoc-checker)
