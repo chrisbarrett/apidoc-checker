@@ -10,12 +10,17 @@ import           Data.Text   (Text)
 import           Network.URI (URI)
 import           Prelude     hiding (Enum)
 
-data TypeRef = TRRemote Namespace TypeName
-             | TRBuiltIn TBuiltIn
-             | TRLocal TypeName
+data TypeRef = TSimple SimpleType
+             | TMap SimpleType
+             | TArray SimpleType
   deriving (Show, Eq, Ord)
 
-data TBuiltIn = TBoolean
+data SimpleType = TRemote Namespace TypeName
+                | BuiltIn BuiltIn
+                | TLocal TypeName
+  deriving (Show, Eq, Ord)
+
+data BuiltIn = TBoolean
               | TDateIso8601
               | TDateTimeIso8601
               | TDecimal
@@ -28,7 +33,7 @@ data TBuiltIn = TBoolean
               | TUuid
   deriving (Show, Eq, Ord)
 
-newtype TypeName = TypeName Text
+newtype TypeName = TypeName {_unTypeName :: Text}
   deriving (Show, Eq, Ord)
 
 newtype FieldName = FieldName Text
