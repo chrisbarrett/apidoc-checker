@@ -69,7 +69,7 @@ parseSpec =
     validator $ DSL.Spec
       <$> optional "apidoc" apidoc
       <*> optional "attributes" (array attribute)
-      <*> optional "baseUrl" uri
+      <*> optional "base_url" uri
       <*> optional "description" text
       <*> optional "enums" (object (keyType typeName) enum)
       <*> optional "headers" (array header)
