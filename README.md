@@ -1,7 +1,11 @@
 # apidoc-checker
 
+![Tooltip displayed over syntax error in Emacs](./assets/screenshot.png)
+
 A tool to validate apidoc specifications. Provides pretty error messages for
 command-line use, and includes a Flycheck checker for Emacs.
+
+![Dog at a computer with an overlay labelled "excellent"](./assets/dog.png)
 
 ## Usage
 
