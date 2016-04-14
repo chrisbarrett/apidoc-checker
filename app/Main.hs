@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 module Main where
@@ -7,20 +8,23 @@ import qualified Data.Validation              as Validation
 import           Options.Applicative
 import qualified System.Environment           as Environment
 import qualified System.Exit                  as Exit
-import           System.IO                    (stdout)
+import           System.IO                    (stderr, stdout)
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 
 main :: IO ()
 main = do
     prog <- Environment.getProgName
     Opts {..} <- execParser (options prog)
-    result <- Parser.parseFile optFile
-    case result of
+
+    let printDoc h d =
+            PP.displayIO h (PP.renderPretty 1 10000 (if optNoColour then PP.plain d else d))
+
+    Parser.parseFile optFile >>= \case
         Validation.Success _  ->
-            putStrLn "Parsed with no errors."
+            printDoc stdout (PP.dullgreen "Finished with no errors.")
         Validation.Failure errs -> do
-            let doc = if optNoColour then PP.plain errs else errs
-            PP.displayIO stdout (PP.renderPretty 1 10000 doc)
+            printDoc stderr errs
+            printDoc stdout (PP.red "Malformed apidoc spec.")
             Exit.exitFailure
 
 -- * Option parsing
