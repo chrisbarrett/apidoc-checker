@@ -383,7 +383,7 @@ bool js =
 uri :: Validator DSL.Uri
 uri js = do
     str <- Text.unpack <$> text js
-    Maybe.fromMaybe (raiseError "Invalid URI" (spanOf js))
+    Maybe.fromMaybe (raiseError "Invalid URI." (spanOf js))
                     (pure . DSL.Uri <$> URI.parseURI str)
 
 parseJObject :: Validator (Json ())
