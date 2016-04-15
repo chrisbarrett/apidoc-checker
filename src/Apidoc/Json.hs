@@ -52,20 +52,21 @@ parseJson = whitespace *> document <* whitespace
               <|> parseString
               <|> parseArray
               <|> parseObject
-              <?> "value"
 
 whitespace :: Parser ()
-whitespace = spaces <|> skipMany newline <?> "whitespace"
+whitespace = spaces <|> skipMany newline
 
 parseNumber, parseString, parseBool, parseNull, parseArray, parseObject :: Parser (Json Span)
 
 parseArray = do
-    (elems :~ s) <- spanned (brackets (whitespace *> commaSep parseJson))
+    (elems :~ s) <- spanned (brackets (whitespace >> commaSep parseJson))
     pure (JArray s elems)
+    <?> "array"
 
 parseObject = do
     (content :~ s) <- spanned (braces (whitespace *> commaSep kvp))
     pure (JObject s (Map.fromList content))
+    <?> "object"
   where
     kvp :: Parser (Key Span, Json Span)
     kvp = do
@@ -73,11 +74,11 @@ parseObject = do
       json <- parseJson
       return (Key s label, json)
 
-parseBool = (do
+parseBool = do
     let true  = string "true"  *> pure True
         false = string "false" *> pure False
     (b :~ s) <- spanned (true <|> false)
-    pure (JBool s b))
+    pure (JBool s b)
     <?> "boolean"
 
 parseNull = do
@@ -90,6 +91,7 @@ parseNumber = do
         anyNumeric = Either.either fromIntegral id <$> integerOrDouble
     (n :~ s) <- spanned (notUnaryPlus >> (zero <|> anyNumeric))
     pure (JNumber s n)
+    <?> "number"
 
 parseString = do
     let start = char '"' <?> "start of string (double-quotes)"
@@ -97,12 +99,13 @@ parseString = do
         end = char '"' <?> "end of string (double-quotes)"
     (str :~ s) <- spanned (start *> content `manyTill` end)
     pure (JString s (Text.pack str))
+    <?> "string"
   where
     escapeSequence :: Parser Char
     escapeSequence = do
         ch <- char '\\' *> anyChar
         let escapeCode = pure <$> Map.lookup ch escapeCodes
-            unicodeChar = if ch == 'u' then unicode else fail "invalid escape sequence"
+            unicodeChar = if ch == 'u' then unicode else fail "Invalid escape sequence."
         Maybe.fromMaybe unicodeChar escapeCode
 
     escapeCodes = Map.fromList
@@ -119,7 +122,7 @@ parseString = do
     unicode = do
       code <- count 4 hexDigit
       if null code
-        then fail "invalid unicode sequence"
+        then fail "Invalid unicode sequence."
         else return $ Char.chr $ read $ "0x" ++ code
 
 
