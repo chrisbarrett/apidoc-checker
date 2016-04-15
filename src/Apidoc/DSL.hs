@@ -21,16 +21,16 @@ data SimpleType = TRemote Namespace TypeName
   deriving (Show, Eq, Ord)
 
 data BuiltIn = TBoolean
-              | TDateIso8601
-              | TDateTimeIso8601
-              | TDecimal
-              | TDouble
-              | TInteger
-              | TLong
-              | TObject
-              | TString
-              | TUnit
-              | TUuid
+             | TDateIso8601
+             | TDateTimeIso8601
+             | TDecimal
+             | TDouble
+             | TInteger
+             | TLong
+             | TObject
+             | TString
+             | TUnit
+             | TUuid
   deriving (Show, Eq, Ord)
 
 newtype TypeName = TypeName {_unTypeName :: Text}
