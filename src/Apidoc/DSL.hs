@@ -158,7 +158,7 @@ data Deprecation = Deprecation {
 
 data Field = Field {
     fieldAttributes  :: Maybe [Attribute]
-  , fieldDefault     :: Maybe Text
+  , fieldDefault     :: Maybe (Json ())
   , fieldDeprecation :: Maybe Deprecation
   , fieldDescription :: Maybe Text
   , fieldExample     :: Maybe Text

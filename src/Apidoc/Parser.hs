@@ -151,7 +151,7 @@ modelField :: Validator DSL.Field
 modelField =
     validator $ DSL.Field
       <$> optional "attributes" (array attribute)
-      <*> optional "default" string
+      <*> optional "default" anyJson
       <*> optional "deprecation" deprecation
       <*> optional "description" string
       <*> optional "example" string
