@@ -18,6 +18,7 @@ library
   exposed-modules:     Apidoc.DSL
                      , Apidoc.Json
                      , Apidoc.Parser
+  other-modules:       Apidoc.Orphans
   build-depends:       base
                      , ansi-wl-pprint
                      , bytestring
