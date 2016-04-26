@@ -55,6 +55,9 @@
 ;;;###autoload
 (add-hook 'js2-mode-hook #'apidoc-checker-maybe-enable-apidoc-mode)
 
+;;;###autoload
+(add-hook 'apidoc-mode-hook #'flycheck-mode)
+
 (provide 'apidoc-checker)
 
 ;;; apidoc-checker.el ends here
