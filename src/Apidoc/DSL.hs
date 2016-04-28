@@ -69,8 +69,8 @@ data Apidoc = Apidoc {
   } deriving (Show, Eq)
 
 data Attribute = Attribute {
-    attributeName   :: Text
-  , attributeValues :: Json ()
+    attributeName  :: Text
+  , attributeValue :: Json ()
   } deriving (Show, Eq)
 
 data Enum = Enum {
