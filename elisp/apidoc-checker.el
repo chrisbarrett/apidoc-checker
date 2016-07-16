@@ -4,7 +4,7 @@
 
 ;; Package-Requires: ((flycheck "26-cvs") (js2-mode "20150909"))
 
-;; Version: 0.1.0
+;; Version: 0.2.0
 
 ;; Author: Chris Barrett <chris.d.barrett@me.com>
 
@@ -29,37 +29,21 @@
 
 (require 'dash)
 (require 'flycheck)
-(require 'js2-mode)
 
 (flycheck-define-checker apidoc
   "A syntax checker for Apidoc specifications. "
   :command ("apidoc-checker" "--plain" source)
   :predicate
   (lambda ()
-    (equal "api.json" (buffer-name)))
+    (or (equal "api.json" (buffer-name))
+        (equal "apidoc.json" (buffer-name))))
   :error-patterns
   ((error line-start (file-name) ":" line ":" column ": error: " (message) line-end)
    (warning line-start (file-name) ":" line ":" column ": warning: " (message) line-end)
    (info line-start (file-name) ":" line ":" column ": note: " (message) line-end))
-  :modes apidoc-mode)
+  :modes (js-mode js2-mode))
 
 (add-to-list 'flycheck-checkers 'apidoc)
-
-;;;###autoload
-(define-derived-mode apidoc-mode js2-mode "apidoc")
-
-;;;###autoload
-(defun apidoc-checker-maybe-enable-apidoc-mode ()
-  (when (and (buffer-file-name)
-             (-contains? '("api.json" "apidoc.json") (file-name-nondirectory (buffer-file-name))))
-    (unless (derived-mode-p 'apidoc-mode)
-      (apidoc-mode))))
-
-;;;###autoload
-(add-hook 'js2-mode-hook #'apidoc-checker-maybe-enable-apidoc-mode)
-
-;;;###autoload
-(add-hook 'apidoc-mode-hook #'flycheck-mode)
 
 (provide 'apidoc-checker)
 
