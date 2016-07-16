@@ -34,6 +34,9 @@
 (flycheck-define-checker apidoc
   "A syntax checker for Apidoc specifications. "
   :command ("apidoc-checker" "--plain" source)
+  :predicate
+  (lambda ()
+    (equal "api.json" (buffer-name)))
   :error-patterns
   ((error line-start (file-name) ":" line ":" column ": error: " (message) line-end)
    (warning line-start (file-name) ":" line ":" column ": warning: " (message) line-end)
