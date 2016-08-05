@@ -1,4 +1,4 @@
-module Apidoc.Err where
+module Apidoc.Check.Err where
 
 import           Apidoc.Pos
 import qualified Text.PrettyPrint.ANSI.Leijen as PP

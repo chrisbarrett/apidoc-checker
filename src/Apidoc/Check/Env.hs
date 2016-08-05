@@ -1,4 +1,4 @@
-module Apidoc.Env where
+module Apidoc.Check.Env where
 
 import           Apidoc.DSL    (TypeName)
 import           Data.Sequence (Seq)

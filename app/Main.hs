@@ -4,7 +4,7 @@
 module Main where
 
 import qualified Apidoc.Check                 as Check
-import qualified Apidoc.Err                   as Err
+import qualified Apidoc.Check.Err             as Err
 import qualified Apidoc.Json                  as Json
 import           Control.Monad                (forM)
 import           Options.Applicative
