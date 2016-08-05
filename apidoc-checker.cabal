@@ -17,6 +17,8 @@ library
   hs-source-dirs:      src
   exposed-modules:     Apidoc.Check
                      , Apidoc.DSL
+                     , Apidoc.DSL.Lenses
+                     , Apidoc.DSL.Types
                      , Apidoc.Err
                      , Apidoc.Json
                      , Apidoc.Pos
