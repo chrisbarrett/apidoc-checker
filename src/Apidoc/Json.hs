@@ -19,17 +19,19 @@ import           Text.Trifecta                hiding (parseString)
 import qualified Text.Trifecta.Delta          as Delta
 
 -- * Json AST
---
--- Each node in the parsed JSON AST is tagged with a 'Span' so that verification
--- steps can print error messages referring to the original input.
 
-data Json = JObject Pos (Map Key Json)
+data Json = JObject Pos Object
           | JArray  Pos [Json]
           | JNumber Pos Double
           | JString Pos Text
           | JBool   Pos Bool
           | JNull   Pos
-  deriving (Eq, Show)
+  deriving (Eq, Show, Ord)
+
+data Object = Object {
+    _objectPos    :: !Pos
+  , objectContent :: !(Map Key Json)
+  } deriving (Eq, Show, Ord)
 
 data Key = Key {
     keyPos   :: !Pos
@@ -72,10 +74,10 @@ parseArray =
 
 
 parseObject :: Parser Json
-parseObject =
-    JObject
-      <$> pos
-      <*> (Map.fromList <$> braces (whitespace *> commaSep kvp))
+parseObject = do
+    p <- pos
+    content <- braces (whitespace *> commaSep kvp)
+    pure (JObject p (Object p (Map.fromList content)))
     <?> "object"
   where
     kvp :: Parser (Key, Json)
@@ -175,3 +177,11 @@ typeOf JNumber {} = "number"
 typeOf JString {} = "string"
 typeOf JBool   {} = "bool"
 typeOf JNull   {} = "null"
+
+jsonPos :: Json -> Pos
+jsonPos (JObject p _) = p
+jsonPos (JArray  p _) = p
+jsonPos (JNumber p _) = p
+jsonPos (JString p _) = p
+jsonPos (JBool   p _) = p
+jsonPos (JNull   p) = p

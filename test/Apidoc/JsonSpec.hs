@@ -200,20 +200,20 @@ spec = do
 
         context "empty object" $ do
             let result = parseEither "{}"
-            itParsesToObject mempty result
+            itParsesToObject (Object Pos.empty mempty) result
 
         context "empty object with internal padding" $ do
             let result = parseEither "{  }"
-            itParsesToObject mempty result
+            itParsesToObject (Object Pos.empty mempty) result
 
         context "singleton object" $ do
             let result = parseEither "{\"foo\":\"bar\"}"
-                expected = Map.fromList [ (Key Pos.empty "foo", JString Pos.empty "bar")]
+                expected = Object Pos.empty (Map.fromList [ (Key Pos.empty "foo", JString Pos.empty "bar")])
             itParsesToObject expected result
 
         context "heterogenous object" $ do
             let result = parseEither "{\"foo\":\"bar\", \"baz\": null}"
-                expected = Map.fromList
+                expected = Object Pos.empty $ Map.fromList
                            [ (Key Pos.empty "foo", JString Pos.empty "bar")
                            , (Key Pos.empty "baz", JNull Pos.empty)
                            ]
