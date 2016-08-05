@@ -2,6 +2,7 @@
 -- |Implements a JSON parser that approximately conforms to the spec.
 module Apidoc.Json where
 
+import           Apidoc.Pos
 import           Control.Applicative
 import           Control.Monad.Trans          (MonadIO)
 import qualified Data.ByteString              as BS
@@ -15,35 +16,39 @@ import qualified Data.Text                    as Text
 import           Text.Parser.LookAhead
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import           Text.Trifecta                hiding (parseString)
+import qualified Text.Trifecta.Delta          as Delta
 
 -- * Json AST
 --
 -- Each node in the parsed JSON AST is tagged with a 'Span' so that verification
 -- steps can print error messages referring to the original input.
 
-data Json s = JObject s (Map (Key s) (Json s))
-            | JArray  s [Json s]
-            | JNumber s Double
-            | JString s Text
-            | JBool   s Bool
-            | JNull   s
+data Json = JObject Pos (Map Key Json)
+          | JArray  Pos [Json]
+          | JNumber Pos Double
+          | JString Pos Text
+          | JBool   Pos Bool
+          | JNull   Pos
   deriving (Eq, Show)
 
-data Key s = Key {
-    keySpan  :: !s
+data Key = Key {
+    keyPos   :: !Pos
   , keyLabel :: !Text
   } deriving (Show, Eq, Ord)
 
 -- * Parsers
 
-parseFile :: MonadIO m => FilePath -> m (Result (Json Span))
-parseFile = parseFromFileEx parseJson
-
-parseEither :: BS.ByteString -> Either PP.Doc (Json Span)
-parseEither s = resultToEither (parseByteString parseJson mempty s)
+parseFile :: MonadIO m => FilePath -> m (Either PP.Doc Json)
+parseFile file =
+    resultToEither <$> parseFromFileEx parseJson file
 
 
-parseJson :: Parser (Json Span)
+parseEither :: BS.ByteString -> Either PP.Doc Json
+parseEither s =
+    resultToEither (parseByteString parseJson mempty s)
+
+
+parseJson :: Parser Json
 parseJson = whitespace *> document <* whitespace
     where
       document =  parseNull
@@ -53,54 +58,72 @@ parseJson = whitespace *> document <* whitespace
               <|> parseArray
               <|> parseObject
 
+
 whitespace :: Parser ()
-whitespace = spaces <|> skipMany newline
+whitespace =
+    spaces <|> skipMany newline
 
-parseNumber, parseString, parseBool, parseNull, parseArray, parseObject :: Parser (Json Span)
-
-parseArray = do
-    (elems :~ s) <- spanned (brackets (whitespace >> commaSep parseJson))
-    pure (JArray s elems)
+parseArray :: Parser Json
+parseArray =
+    JArray
+      <$> pos
+      <*> brackets (whitespace >> commaSep parseJson)
     <?> "array"
 
-parseObject = do
-    (content :~ s) <- spanned (braces (whitespace *> commaSep kvp))
-    pure (JObject s (Map.fromList content))
+
+parseObject :: Parser Json
+parseObject =
+    JObject
+      <$> pos
+      <*> (Map.fromList <$> braces (whitespace *> commaSep kvp))
     <?> "object"
   where
-    kvp :: Parser (Key Span, Json Span)
+    kvp :: Parser (Key, Json)
     kvp = do
       (JString s label) <- whitespace *> parseString <* (whitespace >> char ':')
       json <- parseJson
-      return (Key s label, json)
+      pure (Key s label, json)
 
-parseBool = do
-    let true  = string "true"  *> pure True
-        false = string "false" *> pure False
-    (b :~ s) <- spanned (true <|> false)
-    pure (JBool s b)
+
+parseBool :: Parser Json
+parseBool =
+    JBool
+      <$> pos
+      <*> (true <|> false)
     <?> "boolean"
+  where
+    true  = string "true"  *> pure True
+    false = string "false" *> pure False
 
-parseNull = do
-    s <- spanning (text "null")
-    pure (JNull s)
 
-parseNumber = do
-    let notUnaryPlus = lookAhead (try (noneOf "+"))
-        zero = char '0' <* notFollowedBy (some digit) >> pure 0
-        anyNumeric = Either.either fromIntegral id <$> integerOrDouble
-    (n :~ s) <- spanned (notUnaryPlus >> (zero <|> anyNumeric))
-    pure (JNumber s n)
+parseNull :: Parser Json
+parseNull =
+    JNull <$> pos <* text "null"
+
+
+parseNumber :: Parser Json
+parseNumber =
+    JNumber
+      <$> pos
+      <*> (notUnaryPlus >> (zero <|> anyNumeric))
     <?> "number"
+  where
+    notUnaryPlus = lookAhead (try (noneOf "+"))
+    zero = char '0' <* notFollowedBy (some digit) >> pure 0
+    anyNumeric = Either.either fromIntegral id <$> integerOrDouble
 
+
+parseString :: Parser Json
 parseString = do
-    let start = char '"' <?> "start of string (double-quotes)"
-        content = escapeSequence <|> anyChar
-        end = char '"' <?> "end of string (double-quotes)"
-    (str :~ s) <- spanned (start *> content `manyTill` end)
-    pure (JString s (Text.pack str))
+    JString
+      <$> pos
+      <*> (Text.pack <$> (start *> content `manyTill` end))
     <?> "string"
   where
+    start = char '"' <?> "start of string (double-quotes)"
+    content = escapeSequence <|> anyChar
+    end = char '"' <?> "end of string (double-quotes)"
+
     escapeSequence :: Parser Char
     escapeSequence = do
         ch <- char '\\' *> anyChar
@@ -128,33 +151,24 @@ parseString = do
 
 -- * Utility functions
 
+pos :: Parser Pos
+pos = do
+    p <- position
+    case p of
+      Delta.Lines l c _ _ ->
+          pure (Pos (toInteger l) (toInteger c))
+
+      Delta.Directed _ l c _ _ ->
+          pure (Pos (toInteger l) (toInteger c))
+
+      _ ->
+          pure (Pos 0 0)
+
 resultToEither :: Result a -> Either PP.Doc a
 resultToEither (Success x) = Right x
 resultToEither (Failure e) = Left e
 
-eraseSpans :: Json a -> Json ()
-eraseSpans = mapSpans (const ())
-
-mapSpans :: Ord b => (a -> b) -> Json a -> Json b
-mapSpans f (JArray s xs) = JArray (f s) (mapSpans f <$> xs)
-mapSpans f (JNumber s n) = JNumber (f s) n
-mapSpans f (JString s t) = JString (f s) t
-mapSpans f (JBool s b)   = JBool (f s) b
-mapSpans f (JNull s)     = JNull (f s)
-mapSpans f (JObject s m) = JObject (f s) (mapSpans f <$> mapKeySpans f m)
-
-mapKeySpans :: Ord b => (a -> b) -> Map (Key a) v -> Map (Key b) v
-mapKeySpans f = Map.mapKeys (\ (Key s t) -> Key (f s) t)
-
-spanOf :: Json s -> s
-spanOf (JObject s _) = s
-spanOf (JArray  s _) = s
-spanOf (JNumber s _) = s
-spanOf (JString s _) = s
-spanOf (JBool   s _) = s
-spanOf (JNull   s)   = s
-
-typeOf :: Json s -> Text
+typeOf :: Json -> Text
 typeOf JObject {} = "object"
 typeOf JArray  {} = "array"
 typeOf JNumber {} = "number"

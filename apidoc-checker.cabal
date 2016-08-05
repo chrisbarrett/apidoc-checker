@@ -15,10 +15,11 @@ data-files:          resources/*.json
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Apidoc.DSL
+  exposed-modules:     Apidoc.Check
+                     , Apidoc.DSL
+                     , Apidoc.Err
                      , Apidoc.Json
-                     , Apidoc.Parser
-  other-modules:       Apidoc.Orphans
+                     , Apidoc.Pos
   build-depends:       base
                      , ansi-wl-pprint
                      , bytestring
@@ -30,7 +31,6 @@ library
                      , parsers
                      , text
                      , trifecta
-                     , validation
   default-language:    Haskell2010
 
 executable apidoc-checker
@@ -44,7 +44,6 @@ executable apidoc-checker
                      , optparse-applicative
                      , text
                      , trifecta
-                     , validation
   default-language:    Haskell2010
 
 test-suite apidoc-checker-test
@@ -56,7 +55,7 @@ test-suite apidoc-checker-test
                      , bytestring
                      , containers
                      , hspec
-                     , validation
+                     , lens
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 

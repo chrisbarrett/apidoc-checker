@@ -10,14 +10,9 @@ import           Data.Text   (Text)
 import           Network.URI (URI)
 import           Prelude     hiding (Enum)
 
-data TypeRef = TSimple SimpleType
-             | TMap SimpleType
-             | TArray SimpleType
-  deriving (Show, Eq, Ord)
-
-data SimpleType = TRemote Namespace TypeName
-                | BuiltIn BuiltIn
-                | TLocal TypeName
+data TypeRef = TNominal TypeName
+             | TMap TypeName
+             | TArray TypeName
   deriving (Show, Eq, Ord)
 
 data BuiltIn = TBoolean
@@ -70,7 +65,7 @@ data Apidoc = Apidoc {
 
 data Attribute = Attribute {
     attributeName  :: Text
-  , attributeValue :: Json ()
+  , attributeValue :: Json
   } deriving (Show, Eq)
 
 data Enum = Enum {
@@ -158,7 +153,7 @@ data Deprecation = Deprecation {
 
 data Field = Field {
     fieldAttributes  :: Maybe [Attribute]
-  , fieldDefault     :: Maybe (Json ())
+  , fieldDefault     :: Maybe Json
   , fieldDeprecation :: Maybe Deprecation
   , fieldDescription :: Maybe Text
   , fieldExample     :: Maybe Text
@@ -198,7 +193,7 @@ data Response = Response {
   } deriving (Show, Eq)
 
 data Parameter = Parameter {
-    parameterDefault     :: Maybe (Json ())
+    parameterDefault     :: Maybe Json
   , parameterDeprecation :: Maybe Deprecation
   , parameterDescription :: Maybe Text
   , parameterExample     :: Maybe Text

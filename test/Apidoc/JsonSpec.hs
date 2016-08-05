@@ -2,8 +2,10 @@
 module Apidoc.JsonSpec where
 
 import           Apidoc.Json
+import qualified Apidoc.Pos           as Pos
+import           Control.Lens
+import           Control.Lens.Extras  (is)
 import qualified Data.ByteString      as BS
-import qualified Data.Either          as Either
 import qualified Data.Map             as Map
 import           Paths_apidoc_checker as Paths
 import           Test.Hspec
@@ -17,17 +19,14 @@ spec = do
 
     let itParsesSuccessfully result =
           it "parses successfully" $
-              result `shouldSatisfy` Either.isRight
+              result `shouldSatisfy` is _Right
 
         itFailsToParse result =
               it "fails to runParse" $
-                  result `shouldSatisfy` Either.isLeft
-
-        runParse = (fmap.fmap) eraseSpans parseEither
-
+                  result `shouldSatisfy` is _Left
 
     describe "parsing null" $ do
-        let result = runParse "null"
+        let result = parseEither "null"
         itParsesSuccessfully result
         it "parses to null" $
             result `shouldSatisfy` (\ (Right JNull {}) -> True)
@@ -35,13 +34,13 @@ spec = do
     describe "parsing booleans" $ do
 
         describe "true" $ do
-            let result = runParse "true"
+            let result = parseEither "true"
             itParsesSuccessfully result
             it "parses to true" $
                 result `shouldSatisfy` (\ (Right (JBool _ b)) -> b)
 
         describe "false" $ do
-            let result = runParse "false"
+            let result = parseEither "false"
             itParsesSuccessfully result
             it "parses to false" $
                 result `shouldSatisfy` (\ (Right (JBool _ b)) -> not b)
@@ -66,58 +65,58 @@ spec = do
         describe "integers" $ do
 
             context "zero" $ do
-                let result = runParse "0"
+                let result = parseEither "0"
                 itParsesToNumber 0 result
 
             context "unsigned" $ do
-                let result = runParse "12345"
+                let result = parseEither "12345"
                 itParsesToNumber 12345 result
 
             context "unary minus" $ do
-                let result = runParse "-12345"
+                let result = parseEither "-12345"
                 itParsesToNumber (-12345) result
 
             context "positive exponent" $ do
-                let result = runParse "12345e+1"
+                let result = parseEither "12345e+1"
                 itParsesToNumber 12345e+1 result
 
             context "negative exponent" $ do
-                let result = runParse "12345e-1"
+                let result = parseEither "12345e-1"
                 itParsesToNumber 12345e-1 result
 
             context "leading zero" $ do
-                let result = runParse "0123"
+                let result = parseEither "0123"
                 itFailsToParse result
 
             context "unary plus" $ do
-                let result = runParse "+12345"
+                let result = parseEither "+12345"
                 itFailsToParse result
 
 
         describe "decimals" $ do
 
             context "zero" $ do
-                let result = runParse "0.0"
+                let result = parseEither "0.0"
                 itParsesToNumber 0.0 result
 
             context "unsigned" $ do
-                let result = runParse "123.45"
+                let result = parseEither "123.45"
                 itParsesToNumber 123.45 result
 
             context "unary minus" $ do
-                let result = runParse "-123.45"
+                let result = parseEither "-123.45"
                 itParsesToNumber (-123.45) result
 
             context "positive exponent" $ do
-                let result = runParse "123.45e+1"
+                let result = parseEither "123.45e+1"
                 itParsesToNumber 123.45e+1 result
 
             context "negative exponent" $ do
-                let result = runParse "123.45e-1"
+                let result = parseEither "123.45e-1"
                 itParsesToNumber 123.45e-1 result
 
             context "leading zero" $ do
-                let result = runParse "01.23"
+                let result = parseEither "01.23"
                 itFailsToParse result
 
     describe "parsing strings" $ do
@@ -138,15 +137,15 @@ spec = do
             shouldParseToString res _ = error (show res)
 
         context "alphabetic string" $ do
-            let result = runParse "\"hello\""
+            let result = parseEither "\"hello\""
             itParsesToString "hello" result
 
         context "alphanumeric string" $ do
-            let result = runParse "\"hello 123\""
+            let result = parseEither "\"hello 123\""
             itParsesToString "hello 123" result
 
         context "escape sequences" $ do
-            let result = runParse "\"hello\nworld\""
+            let result = parseEither "\"hello\nworld\""
             itParsesToString "hello\nworld" result
 
     describe "parsing arrays" $ do
@@ -167,20 +166,20 @@ spec = do
             shouldParseToArray res _ = error (show res)
 
         context "empty array" $ do
-            let result = runParse "[]"
+            let result = parseEither "[]"
             itParsesToArray [] result
 
         context "empty array with internal padding" $ do
-            let result = runParse "[  ]"
+            let result = parseEither "[  ]"
             itParsesToArray [] result
 
         context "singleton array" $ do
-            let result = runParse "[1]"
-            itParsesToArray [JNumber () 1] result
+            let result = parseEither "[1]"
+            itParsesToArray [JNumber Pos.empty 1] result
 
         context "heterogenous array" $ do
-            let result = runParse "[true, null, false]"
-            itParsesToArray [JBool () True , JNull (), JBool () False] result
+            let result = parseEither "[true, null, false]"
+            itParsesToArray [JBool Pos.empty True , JNull Pos.empty, JBool Pos.empty False] result
 
     describe "parsing objects" $ do
 
@@ -200,23 +199,23 @@ spec = do
             shouldParseToObject res _ = error (show res)
 
         context "empty object" $ do
-            let result = runParse "{}"
+            let result = parseEither "{}"
             itParsesToObject mempty result
 
         context "empty object with internal padding" $ do
-            let result = runParse "{  }"
+            let result = parseEither "{  }"
             itParsesToObject mempty result
 
         context "singleton object" $ do
-            let result = runParse "{\"foo\":\"bar\"}"
-                expected = Map.fromList [ (Key () "foo", JString () "bar")]
+            let result = parseEither "{\"foo\":\"bar\"}"
+                expected = Map.fromList [ (Key Pos.empty "foo", JString Pos.empty "bar")]
             itParsesToObject expected result
 
         context "heterogenous object" $ do
-            let result = runParse "{\"foo\":\"bar\", \"baz\": null}"
+            let result = parseEither "{\"foo\":\"bar\", \"baz\": null}"
                 expected = Map.fromList
-                           [ (Key () "foo", JString () "bar")
-                           , (Key () "baz", JNull ())
+                           [ (Key Pos.empty "foo", JString Pos.empty "bar")
+                           , (Key Pos.empty "baz", JNull Pos.empty)
                            ]
             itParsesToObject expected result
 
@@ -224,5 +223,5 @@ spec = do
         let path = "resources/twitter-timeline.json"
         file <- runIO (Paths.getDataFileName path)
         json <- runIO (BS.readFile file)
-        let result = runParse json
+        let result = parseEither json
         itParsesSuccessfully result

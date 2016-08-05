@@ -3,8 +3,10 @@
 {-# LANGUAGE RecordWildCards   #-}
 module Main where
 
-import qualified Apidoc.Parser                as Parser
-import qualified Data.Validation              as Validation
+import qualified Apidoc.Check                 as Check
+import qualified Apidoc.Err                   as Err
+import qualified Apidoc.Json                  as Json
+import           Control.Monad                (forM)
 import           Options.Applicative
 import qualified System.Environment           as Environment
 import qualified System.Exit                  as Exit
@@ -19,13 +21,23 @@ main = do
     let printDoc h d =
             PP.displayIO h (PP.renderPretty 1 10000 (if optNoColour then PP.plain d else d))
 
-    Parser.parseFile optFile >>= \case
-        Validation.Success _  ->
-            printDoc stdout (PP.dullgreen "Finished with no errors.")
-        Validation.Failure errs -> do
+    Json.parseFile optFile >>= \case
+        Right js -> do
+            let (errs, res) = Check.validate mempty js
+            forM errs $
+              printDoc stderr . Err.render
+            case res  of
+              Just _ -> pure ()
+              Nothing -> do
+                printDoc stdout (PP.red "Malformed apidoc spec.")
+                Exit.exitFailure
+
+        Left errs -> do
             printDoc stderr errs
             printDoc stdout (PP.red "Malformed apidoc spec.")
             Exit.exitFailure
+
+    printDoc stdout (PP.dullgreen "Finished.")
 
 -- * Option parsing
 
