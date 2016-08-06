@@ -1,6 +1,5 @@
 {-# LANGUAGE ConstraintKinds   #-}
 {-# LANGUAGE FlexibleContexts  #-}
-{-# LANGUAGE OverloadedLists   #-}
 {-# LANGUAGE OverloadedStrings #-}
 -- |Implements verification of apidoc specs.
 module Apidoc.Check
@@ -9,253 +8,236 @@ module Apidoc.Check
   , validate
   ) where
 
-import           Apidoc.Check.Env     as Exports (Env)
-import           Apidoc.Check.Err     as Exports (Err (..))
-import qualified Apidoc.Check.Err     as Err
-import           Apidoc.Check.Lenses  as Exports
-import qualified Apidoc.DSL           as DSL
+import           Apidoc.Check.CheckM   (Check)
+import           Apidoc.Check.Env      as Exports (Env)
+import           Apidoc.Check.Err      as Exports (Err (..))
+import           Apidoc.Check.Internal
+import           Apidoc.Check.Lenses   as Exports
+import           Apidoc.DSL.Lenses
+import           Apidoc.DSL.Types
 import           Apidoc.Json
-import           Apidoc.Pos
-import           Control.Lens
-import           Control.Monad.Reader
-import qualified Control.Monad.Reader as Reader
-import           Control.Monad.State  (MonadState, State)
-import qualified Control.Monad.State  as State
-import qualified Data.Foldable        as Foldable
-import qualified Data.List            as List
-import           Data.Map             (Map)
-import qualified Data.Map.Strict      as Map
-import qualified Data.Maybe           as Maybe
-import           Data.Sequence        (Seq)
-import qualified Data.Sequence        as Seq
-import qualified Data.Sequence.Lens   as Seq
-import           Data.Set             (Set)
-import qualified Data.Set             as Set
-import           Data.Text            (Text)
-import qualified Data.Text            as Text
-import           Data.Traversable
-import qualified Network.URI          as URI
+import           Control.Lens          hiding (enum)
+import           Control.Monad
+import           Data.Map              (Map)
+import qualified Data.Map.Strict       as Map
+import           Data.Sequence         (Seq)
+import qualified Data.Set              as Set
+import           Data.Text             (Text)
+import qualified Data.Text             as Text
+import           Prelude               hiding (Enum, enum)
+
+validate :: MonadPlus m => Env -> Json -> (Seq Err, m Spec)
+validate env js = do
+    -- (r, s) <- runCheckM (spec js) env
+    -- (s ^. envErrs, r)
+    undefined
 
 
-type Check m = (Functor m, Applicative m, Monad m, MonadState Env m, MonadPlus m)
-type CheckObject m a = ReaderT Object m a
+spec :: Check m => Json -> m Spec
+spec = object $
+    Spec
+      <$> optional "apidoc" apidoc
+      <*> optional "attributes" (array attribute)
+      <*> optional "base_url" uri
+      <*> optional "description" string
+      <*> optional "enums" (jmap (key typeName) enum)
+      <*> optional "headers" (array header)
+      <*> optional "imports" (array import_)
+      <*> optional "info" info
+      <*> optional "models" (jmap (key typeName) model)
+      <*> required "name" name
+      <*> optional "namespace" namespace
+      <*> optional "resources" (jmap (key typeName) resource)
+      <*> optional "unions" (jmap (key typeName) union)
 
 
-validate :: Env -> Json -> (Seq Err, Maybe DSL.Spec)
-validate env =
-    flip State.evalStateT env $ undefined
-
-
-spec :: Check m => Json -> m DSL.Spec
-spec = object $ do
-    assertExpectedKeys [ "apidoc"
-                       , "attributes"
-                       , "base_url"
-                       , "description"
-                       , "enums"
-                       , "headers"
-                       , "imports"
-                       , "info"
-                       , "models"
-                       , "name"
-                       , "namespace"
-                       , "resources"
-                       , "unions"
-                       ]
-    DSL.Spec
-        <$> optional "apidoc" apidoc
-        <*> optional "attributes" (array attribute)
-        <*> optional "base_url" url
-        <*> optional "description" jstring
-        <*> optional "enums" enums
-        <*> optional "headers" headers
-        <*> optional "imports" imports
-        <*> optional "info" info
-        <*> optional "models" models
-        <*> required "name" name
-        <*> optional "namespace" namespace
-        <*> optional "resources" resources
-        <*> optional "unions" unions
-
-
-apidoc :: Check m => Json -> m DSL.Apidoc
+apidoc :: Check m => Json -> m Apidoc
 apidoc = object $ do
-    assertExpectedKeys ["version"]
-    DSL.Apidoc
-      <$> required "version" version
-  where
-    version = undefined
+    Apidoc
+      <$> required "version" string
 
 
-attribute :: Check m => Json -> m DSL.Attribute
+attribute :: Check m => Json -> m Attribute
 attribute = object $ do
-    assertExpectedKeys ["name", "value"]
-    DSL.Attribute
-      <$> required "name" jstring
+    Attribute
+      <$> required "name" string
       <*> required "value" anyJson
 
 
-url :: Check m => Json -> m DSL.Uri
-url js = do
-    s <- jstring js
-    maybe (invalidUri js s)
-          (pure . DSL.Uri)
-          (URI.parseURI (Text.unpack s))
-  where
-    invalidUri js s =
-        pushErr (jsonPos js) (Err.InvalidUri s)
+enum :: Check m => Json -> m Enum
+enum = object $
+    Enum
+      <$> optional "attributes" (array attribute)
+      <*> optional "deprecation" deprecation
+      <*> optional "description" string
+      <*> optional "plural" string
+      <*> required "values" (array enumValue)
 
 
-enums :: Check m => Json -> m (Map DSL.TypeName DSL.Enum)
-enums = undefined
+enumValue :: Check m => Json -> m EnumValue
+enumValue = object $
+    EnumValue
+      <$> optional "attributes" (array attribute)
+      <*> optional "deprecation" deprecation
+      <*> optional "description" string
+      <*> required "name" typeName
 
 
-headers :: Check m => Json -> m [DSL.Header]
-headers = undefined
+deprecation :: Check m => Json -> m Deprecation
+deprecation = object $
+    Deprecation
+      <$> optional "description" string
 
 
-imports :: Check m => Json -> m [DSL.Import]
-imports = undefined
+header :: Check m => Json -> m Header
+header = object $
+    Header
+      <$> optional "attributes" (array attribute)
+      <*> optional "default" string
+      <*> optional "deprecation" deprecation
+      <*> optional "description" string
+      <*> required "name" string
+      <*> optional "required" bool
+      <*> required "type" typeRef
 
 
-info :: Check m => Json -> m DSL.Info
-info = undefined
+import_ :: Check m => Json -> m Import
+import_ = object $
+    Import
+      <$> required "uri" uri
 
 
-models :: Check m => Json -> m (Map DSL.TypeName DSL.Model)
-models = undefined
+info :: Check m => Json -> m Info
+info = object $
+    Info
+      <$> optional "license" license
+      <*> optional "contact" contact
 
 
-name :: Check m => Json -> m DSL.ServiceName
-name js = do
-    DSL.ServiceName <$> jstring js
+license :: Check m => Json -> m License
+license = object $
+    License
+      <$> required "name" string
+      <*> optional "url" uri
 
 
-namespace :: Check m => Json -> m DSL.Namespace
+contact :: Check m => Json -> m Contact
+contact = object $
+    Contact
+      <$> optional "email" string
+      <*> optional "name" string
+      <*> optional "url" uri
+
+
+model :: Check m => Json -> m Model
+model = object $
+    Model
+      <$> optional "attributes" (array attribute)
+      <*> optional "deprecation" deprecation
+      <*> optional "description" string
+      <*> required "fields" (array field)
+      <*> optional "plural" string
+
+
+field :: Check m => Json -> m Field
+field = object $
+    Field
+      <$> optional "attributes" (array attribute)
+      <*> optional "default" anyJson
+      <*> optional "deprecation" deprecation
+      <*> optional "description" string
+      <*> optional "example" string
+      <*> optional "maximum" int
+      <*> optional "minimum" int
+      <*> required "name" string
+      <*> optional "required" bool
+      <*> required "type" typeRef
+
+
+resource :: Check m => Json -> m Resource
+resource = object $
+    Resource
+      <$> optional "attributes" (array attribute)
+      <*> optional "deprecation" deprecation
+      <*> optional "description" string
+      <*> required "operations" (array operation)
+      <*> optional "path" string
+
+
+operation :: Check m => Json -> m Operation
+operation = object $
+    Operation
+      <$> optional "attributes" (array attribute)
+      <*> optional "body" body
+      <*> optional "deprecation" deprecation
+      <*> optional "description" string
+      <*> required "method" httpMethod
+      <*> optional "parameters" (array parameter)
+      <*> optional "path" string
+      <*> optional "responses" (jmap (key responseCode) response)
+
+
+parameter :: Check m => Json -> m Parameter
+parameter = object $
+    Parameter
+      <$> optional "default" anyJson
+      <*> optional "deprecation" deprecation
+      <*> optional "description" string
+      <*> optional "example" string
+      <*> optional "location" paramLocation
+      <*> optional "minimum" int
+      <*> optional "maximum" int
+      <*> required "name" string
+      <*> optional "required" bool
+      <*> required "type" typeRef
+
+
+response :: Check m => Json -> m Response
+response = object $
+    Response
+      <$> optional "deprecation" deprecation
+      <*> optional "description" string
+      <*> required "type" typeRef
+
+
+body :: Check m => Json -> m Body
+body = object $
+    Body
+      <$> optional "attributes" (array attribute)
+      <*> optional "deprecation" deprecation
+      <*> optional "description" string
+      <*> required "type" typeRef
+
+
+union :: Check m => Json -> m Union
+union = object $
+    Union
+      <$> optional "attributes" (array attribute)
+      <*> optional "deprecation" deprecation
+      <*> optional "description" string
+      <*> optional "discriminator" string
+      <*> optional "plural" string
+      <*> required "types" (array unionType)
+
+
+unionType :: Check m => Json -> m UnionType
+unionType = object $
+    UnionType
+      <$> optional "attributes" (array attribute)
+      <*> optional "deprecation" deprecation
+      <*> optional "description" string
+      <*> required "type" typeRef
+
+
+name :: Check m => Json -> m ServiceName
+name js =
+    ServiceName <$> string js
+
+
+namespace :: Check m => Json -> m Namespace
 namespace js =
-    DSL.Namespace <$> jstring js
+    Namespace <$> string js
 
-
-resources :: Check m => Json -> m (Map DSL.TypeRef DSL.Resource)
-resources = undefined
-
-
-unions :: Check m => Json -> m (Map DSL.TypeName DSL.Union)
-unions = undefined
-
-
-anyJson :: Check m => Json -> m Json
-anyJson = pure
-
-
-jstring :: Check m => Json -> m Text
-
-jstring (JString _ s) =
-    pure s
-
-jstring js =
-    typeError (jsonPos js) (Err.Expected "string") (Err.Actual (typeOf js))
-
-
-typeError :: Check m => Pos -> Err.Expected -> Err.Actual -> m a
-typeError p expected actual = do
-    pushErr p (Err.TypeError expected actual)
-
-
-pushErr :: Check m => Pos -> Err.ErrType -> m a
-pushErr p e = do
-    envErrs <%= (`snoc` (Err p e))
-    mzero
-
-
--- |Parse the given 'Json' value to an object, then apply a validation function.
--- Push errors into the context if there are duplicate keys.
-object :: Check m => CheckObject m a -> Json -> m a
-object f (JObject _ obj) = do
-    let keys = obj ^.. objectContent.traverse._1
-    checkNoDuplicates keys
-    Reader.runReaderT f obj
-  where
-    checkNoDuplicates ks =
-        fmap (\k -> (k ^. keyLabel, Seq.singleton k)) ks
-          & Map.fromListWith mappend
-          & Map.filter ((>) 1 . length)
-          & Map.map Seq.sort
-          & Map.elems
-          & traverse dupKeyErr
-
-    dupKeyErr (decl :< dups) =
-        for dups (\dup ->
-                  pushErr (dup ^. keyPos) (Err.DuplicateKey decl dup))
-    dupKeyErr _Empty = pure mempty
-
-object _ js =
-    typeError (jsonPos js) (Err.Expected "object") (Err.Actual (typeOf js))
-
-
--- |Parse the given 'Json' value to an array, then apply a validation function.
-array :: Check m => (Json -> m a) -> Json -> m [a]
-array f (JArray _ xs) =
-    traverse f xs
-array _ js =
-    typeError (jsonPos js) (Err.Expected "array") (Err.Actual (typeOf js))
-
-
--- TODO: Use 'optional' and 'required' to add the list of expected keys into the
--- context, then validate those keys automatically inside the 'object' parser.
-
--- |Parse a required attribute on a JSON object. If there multiple declarations
--- under the same key, validate all of them and return the larequired :: Text -> Object -> (Json -> Check a) -> Check a
-required :: Check m => Text -> (Json -> m a) -> CheckObject m a
-required k f = do
-    obj <- Reader.ask
-    obj ^. objectContent
-      & Seq.filter ((==) k . view (_1.keyLabel))
-      & fmap snd
-      & validateAllEntries obj
-  where
-    -- If there multiple declarations under the same key, validate all of
-    -- them and return the last.
-
-    validateAllEntries :: Check m => Object -> Seq Json -> CheckObject m a
-    validateAllEntries _ (xs :> x) = do
-        traverse f xs
-        pure (runReaderT (pure f) x)
-
-    validateAllEntries o _Empty =
-      pushErr (o ^. objectPos) (Err.RequiredKeyMissing k)
-
-
--- |Parse an optional attribute on a JSON object. If there multiple declarations
--- under the same key, validate all of them and return the last.
-optional :: Check m => Text -> (Json -> m a) -> CheckObject m (Maybe a)
-optional k f = do
-    obj <- Reader.ask
-    obj ^. objectContent
-      & Seq.filter ((==) k . view (_1.keyLabel))
-      & fmap snd
-      & validateAllEntries
-  where
-    validateAllEntries :: Check m => Seq Json -> CheckObject m (Maybe a)
-    validateAllEntries (xs :> x) = do
-        traverse f xs
-        Just <$> (f x)
-
-    validateAllEntries _Empty =
-        pure Nothing
-
-
-assertExpectedKeys :: Check m => Set Text -> CheckObject m ()
-assertExpectedKeys expectedKeys = do
-    obj <- Reader.ask
-    let keys = obj ^.. objectContent.traverse._1
-    for keys assertInExpected
-    pure ()
-  where
-    assertInExpected (Key p k) =
-        if k `notElem` expectedKeys
-        then unexpectedKey p k
-        else pure ()
-
-    unexpectedKey p k = do
-        pushErr p (Err.UnexpectedKey k)
+typeName :: Check m => Json -> m TypeName
+typeName js =
+    TypeName <$> string js

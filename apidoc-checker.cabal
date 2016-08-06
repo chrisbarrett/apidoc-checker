@@ -16,8 +16,11 @@ data-files:          resources/*.json
 library
   hs-source-dirs:      src
   exposed-modules:     Apidoc.Check
+                     , Apidoc.Check.CheckM
+                     , Apidoc.Check.CheckObject
                      , Apidoc.Check.Err
                      , Apidoc.Check.Env
+                     , Apidoc.Check.Internal
                      , Apidoc.DSL
                      , Apidoc.DSL.Lenses
                      , Apidoc.DSL.Types
