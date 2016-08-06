@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedLists   #-}
 {-# LANGUAGE OverloadedStrings #-}
 module Apidoc.JsonSpec where
 
@@ -208,15 +209,14 @@ spec = do
 
         context "singleton object" $ do
             let result = parseEither "{\"foo\":\"bar\"}"
-                expected = Object Pos.empty (Map.fromList [ (Key Pos.empty "foo", JString Pos.empty "bar")])
+                expected = Object Pos.empty [(Key Pos.empty "foo", JString Pos.empty "bar")]
             itParsesToObject expected result
 
         context "heterogenous object" $ do
             let result = parseEither "{\"foo\":\"bar\", \"baz\": null}"
-                expected = Object Pos.empty $ Map.fromList
-                           [ (Key Pos.empty "foo", JString Pos.empty "bar")
-                           , (Key Pos.empty "baz", JNull Pos.empty)
-                           ]
+                expected = Object Pos.empty [ (Key Pos.empty "foo", JString Pos.empty "bar")
+                                            , (Key Pos.empty "baz", JNull Pos.empty)
+                                            ]
             itParsesToObject expected result
 
     describe "parsing a twitter timeline response" $ do

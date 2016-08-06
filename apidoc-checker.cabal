@@ -22,6 +22,9 @@ library
                      , Apidoc.DSL.Lenses
                      , Apidoc.DSL.Types
                      , Apidoc.Json
+                     , Apidoc.Json.Lenses
+                     , Apidoc.Json.Parser
+                     , Apidoc.Json.Types
                      , Apidoc.Pos
   build-depends:       base
                      , ansi-wl-pprint
