@@ -1,10 +1,11 @@
 module Apidoc.DSL.Types where
 
-import           Apidoc.Json (Json)
-import           Data.Map    (Map)
-import           Data.Text   (Text)
-import           Network.URI (URI)
-import           Prelude     hiding (Enum)
+import           Apidoc.Json   (Json)
+import           Data.Map      (Map)
+import           Data.Sequence (Seq)
+import           Data.Text     (Text)
+import           Network.URI   (URI)
+import           Prelude       hiding (Enum)
 
 data TypeRef = TNominal TypeName
              | TMap TypeName
@@ -41,17 +42,17 @@ newtype ServiceName = ServiceName {_serviceNameLabel :: Text}
 
 data Spec = Spec {
     _specApidoc      :: Maybe Apidoc
-  , _specAttributes  :: Maybe [Attribute]
+  , _specAttributes  :: Maybe (Seq Attribute)
   , _specBaseUrl     :: Maybe Uri
   , _specDescription :: Maybe Text
   , _specEnums       :: Maybe (Map TypeName Enum)
-  , _specHeaders     :: Maybe [Header]
-  , _specImports     :: Maybe [Import]
+  , _specHeaders     :: Maybe (Seq Header)
+  , _specImports     :: Maybe (Seq Import)
   , _specInfo        :: Maybe Info
   , _specModels      :: Maybe (Map TypeName Model)
   , _specName        :: ServiceName
   , _specNamespace   :: Maybe Namespace
-  , _specResources   :: Maybe (Map TypeRef Resource)
+  , _specResources   :: Maybe (Map TypeName Resource)
   , _specUnions      :: Maybe (Map TypeName Union)
   } deriving (Show, Eq)
 
@@ -65,22 +66,22 @@ data Attribute = Attribute {
   } deriving (Show, Eq)
 
 data Enum = Enum {
-    _enumAttributes  :: Maybe [Attribute]
+    _enumAttributes  :: Maybe (Seq Attribute)
   , _enumDeprecation :: Maybe Deprecation
   , _enumDescription :: Maybe Text
-  , _enumPlural      :: Maybe TypeName
-  , _enumValues      :: [EnumValue]
+  , _enumPlural      :: Maybe Text
+  , _enumValues      :: Seq EnumValue
   } deriving (Show, Eq)
 
 data EnumValue = EnumValue {
-    _enumValueAttributes  :: Maybe [Attribute]
+    _enumValueAttributes  :: Maybe (Seq Attribute)
   , _enumValueDeprecation :: Maybe Deprecation
   , _enumValueDescription :: Maybe Text
   , _enumValueName        :: TypeName
   } deriving (Show, Eq)
 
 data Header = Header {
-    _headerAttributes  :: Maybe [Attribute]
+    _headerAttributes  :: Maybe (Seq Attribute)
   , _headerDefault     :: Maybe Text
   , _headerDeprecation :: Maybe Deprecation
   , _headerDescription :: Maybe Text
@@ -99,39 +100,39 @@ data Info = Info {
   } deriving (Show, Eq)
 
 data Model = Model {
-    _modelAttributes  :: Maybe [Attribute]
+    _modelAttributes  :: Maybe (Seq Attribute)
   , _modelDeprecation :: Maybe Deprecation
   , _modelDescription :: Maybe Text
-  , _modelFields      :: [Field]
-  , _modelPlural      :: Maybe TypeName
+  , _modelFields      :: Seq Field
+  , _modelPlural      :: Maybe Text
   } deriving (Show, Eq)
 
 data Resource = Resource {
-    _resourceAttributes  :: Maybe [Attribute]
+    _resourceAttributes  :: Maybe (Seq Attribute)
   , _resourceDeprecation :: Maybe Deprecation
   , _resourceDescription :: Maybe Text
-  , _resourceOperations  :: [Operation]
+  , _resourceOperations  :: Seq Operation
   , _resourcePath        :: Maybe Text
   } deriving (Show, Eq)
 
 data Union = Union {
-    _unionAttributes    :: Maybe [Attribute]
+    _unionAttributes    :: Maybe (Seq Attribute)
   , _unionDeprecation   :: Maybe Deprecation
   , _unionDescription   :: Maybe Text
   , _unionDiscriminator :: Maybe Text
-  , _unionPlural        :: Maybe TypeName
-  , _unionTypes         :: [UnionType]
+  , _unionPlural        :: Maybe Text
+  , _unionTypes         :: Seq UnionType
   } deriving (Show, Eq)
 
 data UnionType = UnionType {
-    _unionTypeAttributes  :: Maybe [Attribute]
+    _unionTypeAttributes  :: Maybe (Seq Attribute)
   , _unionTypeDeprecation :: Maybe Deprecation
   , _unionTypeDescription :: Maybe Text
   , _unionTypeType        :: TypeRef
   } deriving (Show, Eq)
 
 data Body = Body {
-    _bodyAttributes  :: Maybe [Attribute]
+    _bodyAttributes  :: Maybe (Seq Attribute)
   , _bodyDeprecation :: Maybe Deprecation
   , _bodyDescription :: Maybe Text
   , _bodyType        :: TypeRef
@@ -148,7 +149,7 @@ data Deprecation = Deprecation {
   } deriving (Show, Eq)
 
 data Field = Field {
-    _fieldAttributes  :: Maybe [Attribute]
+    _fieldAttributes  :: Maybe (Seq Attribute)
   , _fieldDefault     :: Maybe Json
   , _fieldDeprecation :: Maybe Deprecation
   , _fieldDescription :: Maybe Text
@@ -166,12 +167,12 @@ data License = License {
   } deriving (Show, Eq)
 
 data Operation = Operation {
-    _operationAttributes  :: Maybe [Attribute]
+    _operationAttributes  :: Maybe (Seq Attribute)
   , _operationBody        :: Maybe Body
   , _operationDeprecation :: Maybe Deprecation
   , _operationDescription :: Maybe Text
   , _operationMethod      :: HttpMethod
-  , _operationParameters  :: Maybe [Parameter]
+  , _operationParameters  :: Maybe (Seq Parameter)
   , _operationPath        :: Maybe Text
   , _operationResponses   :: Maybe (Map ResponseCode Response)
   } deriving (Show, Eq)

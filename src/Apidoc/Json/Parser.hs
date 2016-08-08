@@ -11,6 +11,7 @@ import qualified Data.Char                    as Char
 import qualified Data.Either                  as Either
 import qualified Data.Map.Strict              as Map
 import qualified Data.Maybe                   as Maybe
+import           Data.Sequence                (Seq)
 import qualified Data.Sequence                as Seq
 import           Data.Text                    (Text)
 import qualified Data.Text                    as Text
@@ -48,7 +49,7 @@ parseArray :: Parser Json
 parseArray =
     JArray
       <$> pos
-      <*> brackets (whitespace >> commaSep parseJson)
+      <*> brackets (whitespace *> (Seq.fromList <$> commaSep parseJson))
     <?> "array"
 
 

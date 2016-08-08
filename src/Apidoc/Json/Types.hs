@@ -5,7 +5,7 @@ import           Data.Sequence (Seq)
 import           Data.Text     (Text)
 
 data Json = JObject Pos Object
-          | JArray  Pos [Json]
+          | JArray  Pos (Seq Json)
           | JNumber Pos Double
           | JString Pos Text
           | JBool   Pos Bool
