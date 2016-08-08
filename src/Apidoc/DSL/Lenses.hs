@@ -12,9 +12,6 @@ makePrisms ''BuiltIn
 makeLenses ''TypeName
 makePrisms ''TypeName
 
-makeLenses ''FieldName
-makePrisms ''FieldName
-
 makeLenses ''Uri
 makePrisms ''Uri
 

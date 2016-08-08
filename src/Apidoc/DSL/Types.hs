@@ -178,7 +178,7 @@ data Operation = Operation {
   } deriving (Show, Eq)
 
 data HttpMethod = GET | POST | PUT | PATCH | DELETE | HEAD | CONNECT | OPTIONS | TRACE
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, Read)
 
 data ResponseCode = RespInt Integer | RespDefault
   deriving (Show, Eq, Ord)
@@ -203,4 +203,4 @@ data Parameter = Parameter {
   } deriving (Show, Eq)
 
 data ParameterLocation = Path | Query | Form
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, Read)

@@ -21,6 +21,7 @@ library
                      , Apidoc.Check.Err
                      , Apidoc.Check.Env
                      , Apidoc.Check.Internal
+                     , Apidoc.Check.Parsers
                      , Apidoc.DSL
                      , Apidoc.DSL.Lenses
                      , Apidoc.DSL.Types

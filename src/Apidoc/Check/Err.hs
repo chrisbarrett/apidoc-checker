@@ -18,10 +18,14 @@ data ErrType = TypeError Expected Actual
              | RequiredKeyMissing Text
              | UnexpectedKey Text
              | InvalidUri Text
+             | InvalidHttpMethod Text
+             | InvalidParameterLocation Text
+             | ResponseCodeOutOfRange Integer
+             | UnparseableResponseCode Text
+             | UnparseableTypeRef Text
              | DuplicateKey
                   Json.Key -- ^ First declaration
                   Json.Key -- ^ Duplicate declaration
-
   deriving (Show, Eq, Ord)
 
 render :: Err -> PP.Doc
