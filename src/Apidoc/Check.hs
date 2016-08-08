@@ -16,7 +16,7 @@ import           Apidoc.Check.Lenses   as Exports
 import           Apidoc.DSL.Lenses
 import           Apidoc.DSL.Types
 import           Apidoc.Json
-import           Control.Lens          hiding (enum)
+import           Control.Lens          hiding (enum, mapOf)
 import           Control.Monad
 import           Data.Map              (Map)
 import qualified Data.Map.Strict       as Map
@@ -40,15 +40,15 @@ spec = object $
       <*> optional "attributes" (array attribute)
       <*> optional "base_url" uri
       <*> optional "description" string
-      <*> optional "enums" (jmap (key typeName) enum)
+      <*> optional "enums" (mapOf (key typeName) enum)
       <*> optional "headers" (array header)
       <*> optional "imports" (array import_)
       <*> optional "info" info
-      <*> optional "models" (jmap (key typeName) model)
+      <*> optional "models" (mapOf (key typeName) model)
       <*> required "name" name
       <*> optional "namespace" namespace
-      <*> optional "resources" (jmap (key typeName) resource)
-      <*> optional "unions" (jmap (key typeName) union)
+      <*> optional "resources" (mapOf (key typeName) resource)
+      <*> optional "unions" (mapOf (key typeName) union)
 
 
 apidoc :: Check m => Json -> m Apidoc
@@ -174,7 +174,7 @@ operation = object $
       <*> required "method" httpMethod
       <*> optional "parameters" (array parameter)
       <*> optional "path" string
-      <*> optional "responses" (jmap (key responseCode) response)
+      <*> optional "responses" (mapOf (key responseCode) response)
 
 
 parameter :: Check m => Json -> m Parameter

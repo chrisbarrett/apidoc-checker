@@ -132,8 +132,8 @@ checkNoDuplicates ks =
 
 -- |Parse the given 'Json' value to a map, applying validation functions over
 -- the keys and values.
-jmap :: (Ord k, Check m) => (Key -> m k) -> (Json -> m v) -> Json -> m (Map k v)
-jmap pk pv (JObject _ obj) =
+mapOf :: (Ord k, Check m) => (Key -> m k) -> (Json -> m v) -> Json -> m (Map k v)
+mapOf pk pv (JObject _ obj) =
     obj ^. objectContent
     & fmap validateKvp
     & sequence
@@ -142,11 +142,11 @@ jmap pk pv (JObject _ obj) =
     validateKvp (k, v) =
         (,) <$> pk k <*> pv v
 
-jmap _ _ js =
+mapOf _ _ js =
     typeError (jsonPos js) (Expected "object") (Actual (typeOf js))
 
 
--- |Lift a Json parser into a key parser for use with 'jmap'.
+-- |Lift a Json parser into a key parser for use with 'mapOf'.
 key :: Check m => (Json -> m a) -> Key -> m a
 key f k =
     let p = k ^. keyPos
