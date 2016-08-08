@@ -5,8 +5,7 @@ module Apidoc.Check.Internal where
 
 import           Apidoc.Check.CheckM
 import           Apidoc.Check.CheckObject
-import           Apidoc.Check.Err         (Err (..))
-import qualified Apidoc.Check.Err         as Err
+import           Apidoc.Check.Err
 import           Apidoc.Check.Lenses
 import qualified Apidoc.Check.Parsers     as Parsers
 import qualified Apidoc.DSL               as DSL
@@ -30,12 +29,7 @@ import           Text.Read                (readMaybe)
 typeRef :: Check m => Json -> m DSL.TypeRef
 typeRef js = do
     s <- string js
-    Parsers.parseTypeRef s
-      & maybe (parseErr s) pure
-  where
-    parseErr s =
-        pushErr (jsonPos js) (Err.UnparseableTypeRef s)
-
+    Parsers.parseTypeRef s `orElse` pushErr (jsonPos js) (UnparseableTypeRef s)
 
 anyJson :: Check m => Json -> m Json
 anyJson = pure
@@ -43,25 +37,22 @@ anyJson = pure
 uri :: Check m => Json -> m DSL.Uri
 uri js = do
     s <- string js
-    URI.parseURI (Text.unpack s)
-      & maybe (invalidUri js s) (pure . DSL.Uri)
-  where
-    invalidUri js s =
-        pushErr (jsonPos js) (Err.InvalidUri s)
+    let parsed = DSL.Uri <$> URI.parseURI (Text.unpack s)
+    parsed `orElse` pushErr (jsonPos js) (InvalidUri s)
 
 
 responseCode :: Check m => Json -> m DSL.ResponseCode
 responseCode (JString p "default") = pure DSL.RespDefault
 responseCode (JString p s) =
     readMaybe (Text.unpack s)
-      & maybe (pushErr p (Err.UnparseableResponseCode s)) parseNumber
+      & maybe (pushErr p (UnparseableResponseCode s)) parseNumber
   where
     parseNumber n
       | isInteger n && n >= 200 && n <= 526 = pure (DSL.RespInt (round n))
-      | isInteger n = pushErr p (Err.ResponseCodeOutOfRange (round n))
-      | otherwise = typeError p (Err.Expected "HTTP response code") (Err.Actual "float")
+      | isInteger n = pushErr p (ResponseCodeOutOfRange (round n))
+      | otherwise = typeError p (Expected "HTTP response code") (Actual "float")
 responseCode js =
-    typeError (jsonPos js) (Err.Expected "HTTP response code") (Err.Actual (typeOf js))
+    typeError (jsonPos js) (Expected "HTTP response code") (Actual (typeOf js))
 
 
 isInteger :: Double -> Bool
@@ -72,41 +63,33 @@ isInteger d =
 httpMethod :: Check m => Json -> m DSL.HttpMethod
 httpMethod js = do
     method <- string js
-    readMaybe (Text.unpack method)
-      & maybe (invalidMethod method) pure
-  where
-    invalidMethod s =
-        pushErr (jsonPos js) (Err.InvalidHttpMethod s)
+    readMaybe (Text.unpack method) `orElse` pushErr (jsonPos js) (InvalidHttpMethod method)
 
 
 paramLocation :: Check m => Json -> m DSL.ParameterLocation
 paramLocation js = do
     loc <- string js
-    readMaybe (Text.unpack loc)
-      & maybe (invalidLocation loc) pure
-  where
-    invalidLocation s =
-        pushErr (jsonPos js) (Err.InvalidParameterLocation s)
+    readMaybe (Text.unpack loc) `orElse` pushErr (jsonPos js) (InvalidParameterLocation loc)
 
 
 string :: Check m => Json -> m Text
 string (JString _ s) = pure s
 string js =
-    typeError (jsonPos js) (Err.Expected "string") (Err.Actual (typeOf js))
+    typeError (jsonPos js) (Expected "string") (Actual (typeOf js))
 
 
 bool :: Check m => Json -> m Bool
 bool (JBool _ b) = pure b
 bool js =
-    typeError (jsonPos js) (Err.Expected "bool") (Err.Actual (typeOf js))
+    typeError (jsonPos js) (Expected "bool") (Actual (typeOf js))
 
 
 int :: Check m => Json -> m Integer
 int (JNumber p n)
     | isInteger n = pure (round n)
-    | otherwise   = typeError p (Err.Expected "integer") (Err.Actual "float")
+    | otherwise   = typeError p (Expected "integer") (Actual "float")
 int js =
-    typeError (jsonPos js) (Err.Expected "integer") (Err.Actual (typeOf js))
+    typeError (jsonPos js) (Expected "integer") (Actual (typeOf js))
 
 
 -- |Parse the given 'Json' value to an object, then apply a validation function.
@@ -124,11 +107,11 @@ object f (JObject _ obj) = do
         | otherwise   = unexpectedKey p k
 
     unexpectedKey p k = do
-        pushErr p (Err.UnexpectedKey k)
+        pushErr p (UnexpectedKey k)
 
 
 object _ js =
-    typeError (jsonPos js) (Err.Expected "object") (Err.Actual (typeOf js))
+    typeError (jsonPos js) (Expected "object") (Actual (typeOf js))
 
 
 checkNoDuplicates :: Check m => [Key] -> m ()
@@ -143,7 +126,7 @@ checkNoDuplicates ks =
 
     dupKeyErr (decl :< dups) =
         for dups (\dup ->
-                  pushErr (dup ^. keyPos) (Err.DuplicateKey decl dup))
+                  pushErr (dup ^. keyPos) (DuplicateKey decl dup))
     dupKeyErr _Empty = pure mempty
 
 
@@ -160,7 +143,7 @@ jmap pk pv (JObject _ obj) =
         (,) <$> pk k <*> pv v
 
 jmap _ _ js =
-    typeError (jsonPos js) (Err.Expected "object") (Err.Actual (typeOf js))
+    typeError (jsonPos js) (Expected "object") (Actual (typeOf js))
 
 
 -- |Lift a Json parser into a key parser for use with 'jmap'.
@@ -177,7 +160,7 @@ array :: Check m => (Json -> m a) -> Json -> m (Seq a)
 array f (JArray _ xs) =
     traverse f xs
 array _ js =
-    typeError (jsonPos js) (Err.Expected "array") (Err.Actual (typeOf js))
+    typeError (jsonPos js) (Expected "array") (Actual (typeOf js))
 
 
 -- |Parse a required attribute on a JSON object. If there multiple declarations
@@ -185,11 +168,11 @@ array _ js =
 required :: Check m => Text -> (Json -> m a) -> CheckObject m a
 required k f = do
     res <- optional k f
-    maybe keyMissingError pure res
+    res `orElse` keyMissingError
     where
       keyMissingError = do
           o <- askObject
-          liftChecker $ pushErr (o ^. objectPos) (Err.RequiredKeyMissing k)
+          liftChecker $ pushErr (o ^. objectPos) (RequiredKeyMissing k)
 
 -- |Parse an optional attribute on a JSON object. If there multiple declarations
 -- under the same key, validate all of them and return the last.
@@ -217,12 +200,15 @@ liftChecker f =
 
 -- * Error reporting
 
-typeError :: Check m => Pos -> Err.Expected -> Err.Actual -> m a
+typeError :: Check m => Pos -> Expected -> Actual -> m a
 typeError p expected actual = do
-    pushErr p (Err.TypeError expected actual)
+    pushErr p (TypeError expected actual)
 
 
-pushErr :: Check m => Pos -> Err.ErrType -> m a
+pushErr :: Check m => Pos -> ErrType -> m a
 pushErr p e = do
     envErrs <%= (`snoc` (Err p e))
     mzero
+
+orElse :: Applicative f => Maybe a -> f a -> f a
+orElse x e = maybe e pure x
