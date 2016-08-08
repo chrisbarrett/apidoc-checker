@@ -163,8 +163,8 @@ array _ js =
     typeError (jsonPos js) (Expected "array") (Actual (typeOf js))
 
 
--- |Parse a required attribute on a JSON object. If there multiple declarations
--- under the same key, validate all of them and return the last.
+-- |Parse a required attribute on a JSON object. If there are multiple
+-- declarations under the same key, validate all of them and return the last.
 required :: Check m => Text -> (Json -> m a) -> CheckObject m a
 required k f = do
     res <- optional k f
@@ -174,8 +174,9 @@ required k f = do
           o <- askObject
           liftChecker $ pushErr (o ^. objectPos) (RequiredKeyMissing k)
 
--- |Parse an optional attribute on a JSON object. If there multiple declarations
--- under the same key, validate all of them and return the last.
+
+-- |Parse an optional attribute on a JSON object. If there are multiple
+-- declarations under the same key, validate all of them and return the last.
 optional :: Check m => Text -> (Json -> m a) -> CheckObject m (Maybe a)
 optional k f = do
     pushExpectedKey k
