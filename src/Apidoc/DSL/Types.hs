@@ -28,9 +28,6 @@ data BuiltIn = TBoolean
 newtype TypeName = TypeName {_typeNameLabel :: Text}
   deriving (Show, Eq, Ord)
 
-newtype FieldName = FieldName {_fieldNameLabel :: Text}
-  deriving (Show, Eq, Ord)
-
 newtype Uri = Uri {_uriValue :: URI}
   deriving (Show, Eq)
 
@@ -156,7 +153,7 @@ data Field = Field {
   , _fieldExample     :: Maybe Text
   , _fieldMaximum     :: Maybe Integer
   , _fieldMinimum     :: Maybe Integer
-  , _fieldName        :: FieldName
+  , _fieldName        :: Text
   , _fieldRequired    :: Maybe Bool
   , _fieldType        :: TypeRef
   } deriving (Show, Eq)
