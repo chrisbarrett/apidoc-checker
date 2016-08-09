@@ -15,12 +15,11 @@ data-files:          resources/*.json
 
 library
   hs-source-dirs:      src
+  ghc-options:         -Wall
   exposed-modules:     Apidoc.Check
-                     , Apidoc.Check.CheckM
-                     , Apidoc.Check.CheckObject
                      , Apidoc.Check.Err
                      , Apidoc.Check.Env
-                     , Apidoc.Check.Internal
+                     , Apidoc.Check.DSL
                      , Apidoc.Check.Lenses
                      , Apidoc.Check.Parsers
                      , Apidoc.DSL
@@ -31,14 +30,17 @@ library
                      , Apidoc.Json.Parser
                      , Apidoc.Json.Types
                      , Apidoc.Pos
+                     , Control.Applicative.Validation
   build-depends:       base
                      , ansi-wl-pprint
                      , bytestring
                      , containers
                      , edit-distance
+                     , free
                      , lens
                      , mtl
                      , network-uri
+                     , semigroups
                      , parsers
                      , text
                      , trifecta
@@ -47,11 +49,13 @@ library
 executable apidoc-checker
   hs-source-dirs:      app
   main-is:             Main.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall
   build-depends:       base
                      , ansi-wl-pprint
                      , apidoc-checker
                      , bytestring
+                     , containers
+                     , lens
                      , optparse-applicative
                      , text
                      , trifecta

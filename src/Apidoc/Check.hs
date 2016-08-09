@@ -1,5 +1,3 @@
-{-# LANGUAGE ConstraintKinds   #-}
-{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 -- |Implements verification of apidoc specs.
 module Apidoc.Check
@@ -8,32 +6,21 @@ module Apidoc.Check
   , validate
   ) where
 
-import           Apidoc.Check.CheckM   (Check)
-import           Apidoc.Check.Env      as Exports (Env)
-import           Apidoc.Check.Err      as Exports (Err (..))
-import           Apidoc.Check.Internal
-import           Apidoc.Check.Lenses   as Exports
-import           Apidoc.DSL.Lenses
+import           Apidoc.Check.DSL
+import           Apidoc.Check.Env               as Exports (Env)
+import           Apidoc.Check.Err               as Exports
+import           Apidoc.Check.Lenses            as Exports
 import           Apidoc.DSL.Types
 import           Apidoc.Json
-import           Control.Lens          hiding (enum, mapOf)
-import           Control.Monad
-import           Data.Map              (Map)
-import qualified Data.Map.Strict       as Map
-import           Data.Sequence         (Seq)
-import qualified Data.Set              as Set
-import           Data.Text             (Text)
-import qualified Data.Text             as Text
-import           Prelude               hiding (Enum, enum)
+import qualified Control.Applicative.Validation as Validation
+import           Data.Sequence                  (Seq)
+import           Prelude                        hiding (Enum)
 
-validate :: MonadPlus m => Env -> Json -> (Seq Err, m Spec)
-validate env js = do
-    -- (r, s) <- runCheckM (spec js) env
-    -- (s ^. envErrs, r)
-    undefined
+validate :: Json -> Either (Seq Err) Spec
+validate js = snd <$> Validation.runValidation (spec js)
 
 
-spec :: Check m => Json -> m Spec
+spec :: Json -> Check Spec
 spec = object $
     Spec
       <$> optional "apidoc" apidoc
@@ -51,20 +38,20 @@ spec = object $
       <*> optional "unions" (mapOf (key typeName) union)
 
 
-apidoc :: Check m => Json -> m Apidoc
-apidoc = object $ do
+apidoc :: Json -> Check Apidoc
+apidoc = object $
     Apidoc
       <$> required "version" string
 
 
-attribute :: Check m => Json -> m Attribute
+attribute :: Json -> Check Attribute
 attribute = object $ do
     Attribute
       <$> required "name" string
       <*> required "value" anyJson
 
 
-enum :: Check m => Json -> m Enum
+enum :: Json -> Check Enum
 enum = object $
     Enum
       <$> optional "attributes" (array attribute)
@@ -74,7 +61,7 @@ enum = object $
       <*> required "values" (array enumValue)
 
 
-enumValue :: Check m => Json -> m EnumValue
+enumValue :: Json -> Check EnumValue
 enumValue = object $
     EnumValue
       <$> optional "attributes" (array attribute)
@@ -83,13 +70,13 @@ enumValue = object $
       <*> required "name" typeName
 
 
-deprecation :: Check m => Json -> m Deprecation
+deprecation :: Json -> Check Deprecation
 deprecation = object $
     Deprecation
       <$> optional "description" string
 
 
-header :: Check m => Json -> m Header
+header :: Json -> Check Header
 header = object $
     Header
       <$> optional "attributes" (array attribute)
@@ -101,27 +88,27 @@ header = object $
       <*> required "type" typeRef
 
 
-import_ :: Check m => Json -> m Import
+import_ :: Json -> Check Import
 import_ = object $
     Import
       <$> required "uri" uri
 
 
-info :: Check m => Json -> m Info
+info :: Json -> Check Info
 info = object $
     Info
       <$> optional "license" license
       <*> optional "contact" contact
 
 
-license :: Check m => Json -> m License
+license :: Json -> Check License
 license = object $
     License
       <$> required "name" string
       <*> optional "url" uri
 
 
-contact :: Check m => Json -> m Contact
+contact :: Json -> Check Contact
 contact = object $
     Contact
       <$> optional "email" string
@@ -129,7 +116,7 @@ contact = object $
       <*> optional "url" uri
 
 
-model :: Check m => Json -> m Model
+model :: Json -> Check Model
 model = object $
     Model
       <$> optional "attributes" (array attribute)
@@ -139,7 +126,7 @@ model = object $
       <*> optional "plural" string
 
 
-field :: Check m => Json -> m Field
+field :: Json -> Check Field
 field = object $
     Field
       <$> optional "attributes" (array attribute)
@@ -154,7 +141,7 @@ field = object $
       <*> required "type" typeRef
 
 
-resource :: Check m => Json -> m Resource
+resource :: Json -> Check Resource
 resource = object $
     Resource
       <$> optional "attributes" (array attribute)
@@ -164,7 +151,7 @@ resource = object $
       <*> optional "path" string
 
 
-operation :: Check m => Json -> m Operation
+operation :: Json -> Check Operation
 operation = object $
     Operation
       <$> optional "attributes" (array attribute)
@@ -177,7 +164,7 @@ operation = object $
       <*> optional "responses" (mapOf (key responseCode) response)
 
 
-parameter :: Check m => Json -> m Parameter
+parameter :: Json -> Check Parameter
 parameter = object $
     Parameter
       <$> optional "default" anyJson
@@ -192,7 +179,7 @@ parameter = object $
       <*> required "type" typeRef
 
 
-response :: Check m => Json -> m Response
+response :: Json -> Check Response
 response = object $
     Response
       <$> optional "deprecation" deprecation
@@ -200,7 +187,7 @@ response = object $
       <*> required "type" typeRef
 
 
-body :: Check m => Json -> m Body
+body :: Json -> Check Body
 body = object $
     Body
       <$> optional "attributes" (array attribute)
@@ -209,7 +196,7 @@ body = object $
       <*> required "type" typeRef
 
 
-union :: Check m => Json -> m Union
+union :: Json -> Check Union
 union = object $
     Union
       <$> optional "attributes" (array attribute)
@@ -220,7 +207,7 @@ union = object $
       <*> required "types" (array unionType)
 
 
-unionType :: Check m => Json -> m UnionType
+unionType :: Json -> Check UnionType
 unionType = object $
     UnionType
       <$> optional "attributes" (array attribute)
@@ -229,15 +216,15 @@ unionType = object $
       <*> required "type" typeRef
 
 
-name :: Check m => Json -> m ServiceName
+name :: Json -> Check ServiceName
 name js =
     ServiceName <$> string js
 
 
-namespace :: Check m => Json -> m Namespace
+namespace :: Json -> Check Namespace
 namespace js =
     Namespace <$> string js
 
-typeName :: Check m => Json -> m TypeName
+typeName :: Json -> Check TypeName
 typeName js =
     TypeName <$> string js

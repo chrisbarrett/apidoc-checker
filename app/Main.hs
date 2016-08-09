@@ -6,7 +6,9 @@ module Main where
 import qualified Apidoc.Check                 as Check
 import qualified Apidoc.Check.Err             as Err
 import qualified Apidoc.Json                  as Json
-import           Control.Monad                (forM)
+import           Control.Lens                 hiding (argument)
+import           Control.Monad                (forM_)
+import qualified Data.Sequence                as Seq
 import           Options.Applicative
 import qualified System.Environment           as Environment
 import qualified System.Exit                  as Exit
@@ -18,26 +20,26 @@ main = do
     prog <- Environment.getProgName
     Opts {..} <- execParser (options prog)
 
-    let printDoc h d =
-            PP.displayIO h (PP.renderPretty 1 10000 (if optNoColour then PP.plain d else d))
+    let printDoc h d = PP.displayIO h (PP.renderPretty 1 10000 (withColour d))
+        withColour d = if optNoColour then PP.plain d else d
 
-    Json.parseFile optFile >>= \case
-        Right js -> do
-            let (errs, res) = Check.validate mempty js
-            forM errs $
-              printDoc stderr . Err.render
-            case res  of
-              Just _ -> pure ()
-              Nothing -> do
-                printDoc stdout (PP.red "Malformed apidoc spec.")
-                Exit.exitFailure
+    results <- runValidator optFile
+    case results of
+      Right _ ->
+        printDoc stdout (PP.dullgreen "Finished.")
+      Left errs -> do
+        forM_ errs (printDoc stderr)
+        printDoc stdout (PP.red "Malformed apidoc spec.")
+        Exit.exitFailure
 
-        Left errs -> do
-            printDoc stderr errs
-            printDoc stdout (PP.red "Malformed apidoc spec.")
-            Exit.exitFailure
+  where
+    runValidator file =
+        bimap Seq.singleton (renderErrs . Check.validate)
+          <$> Json.parseFile file
 
-    printDoc stdout (PP.dullgreen "Finished.")
+    renderErrs = over (_Left.traverse) Err.render
+
+
 
 -- * Option parsing
 

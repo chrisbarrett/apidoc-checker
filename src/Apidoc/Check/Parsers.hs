@@ -2,12 +2,11 @@ module Apidoc.Check.Parsers where
 
 import qualified Apidoc.DSL          as DSL
 import           Control.Applicative
-import           Control.Monad
 import           Data.Text           (Text)
 import qualified Data.Text           as Text
 import           Text.Trifecta
 
-parseTypeRef :: MonadPlus m => Text -> m DSL.TypeRef
+parseTypeRef :: Text -> Maybe DSL.TypeRef
 parseTypeRef s =
   case parseString parser mempty (Text.unpack s) of
     Success x -> pure x
@@ -22,8 +21,8 @@ parseTypeRef s =
     mapType   = string "map" *> bracketed parser
 
     nominalType = do
-        s <- concat <$> identifier `sepBy1` char '.'
-        pure (DSL.TNominal (DSL.TypeName (Text.pack s)))
+        ty <- concat <$> identifier `sepBy1` char '.'
+        pure (DSL.TNominal (DSL.TypeName (Text.pack ty)))
 
     underscore = char '_'
     identifier = do
