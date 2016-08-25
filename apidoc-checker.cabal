@@ -22,6 +22,7 @@ library
                      , Apidoc.Check.DSL
                      , Apidoc.Check.Lenses
                      , Apidoc.Check.Parsers
+                     , Apidoc.Render
                      , Apidoc.DSL
                      , Apidoc.DSL.Lenses
                      , Apidoc.DSL.Types
@@ -56,9 +57,11 @@ executable apidoc-checker
                      , bytestring
                      , containers
                      , lens
+                     , mtl
                      , optparse-applicative
                      , text
                      , trifecta
+                     , utf8-string
   default-language:    Haskell2010
 
 test-suite apidoc-checker-test

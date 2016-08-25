@@ -1,17 +1,13 @@
 module Apidoc.Check.Err where
 
-import qualified Apidoc.Json                  as Json
+import qualified Apidoc.Json as Json
 import           Apidoc.Pos
-import           Data.Text                    (Text)
-import qualified Text.PrettyPrint.ANSI.Leijen as PP
+import           Data.Text   (Text)
 
 newtype Expected = Expected {_expectedLabel :: Text}
   deriving (Show, Eq, Ord)
 
 newtype Actual = Actual {_actualLabel :: Text}
-  deriving (Show, Eq, Ord)
-
-data Err = Err Pos ErrType
   deriving (Show, Eq, Ord)
 
 data ErrType = TypeError Expected Actual
@@ -28,5 +24,5 @@ data ErrType = TypeError Expected Actual
                   Json.Key -- ^ Duplicate declaration
   deriving (Show, Eq, Ord)
 
-render :: Err -> PP.Doc
-render = undefined
+data Err = Err {_errPos :: Pos, _errType :: ErrType}
+  deriving (Show, Eq, Ord)

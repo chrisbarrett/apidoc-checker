@@ -16,8 +16,8 @@ import qualified Control.Applicative.Validation as Validation
 import           Data.Sequence                  (Seq)
 import           Prelude                        hiding (Enum)
 
-validate :: Json -> Either (Seq Err) Spec
-validate js = snd <$> Validation.runValidation (spec js)
+validate :: Json -> Either (Seq Err) (Seq Err, Spec)
+validate js = Validation.runValidation (spec js)
 
 
 spec :: Json -> Check Spec

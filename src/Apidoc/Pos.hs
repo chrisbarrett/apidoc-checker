@@ -1,10 +1,18 @@
+{-# LANGUAGE TemplateHaskell #-}
 module Apidoc.Pos where
 
-data Pos = Pos {
-      _posLine :: !Integer
-    , _posCol  :: !Integer
-    }
-    deriving (Show, Eq, Ord)
+import           Control.Lens.TH
+import           Text.Trifecta.Delta (Delta (..))
+
+newtype Pos = Pos {_unPos :: Delta}
+    deriving (Ord, Show)
+
+instance Eq Pos where
+    _ == _ = True
+
 
 empty :: Pos
-empty = Pos 0 0
+empty = Pos (Columns (-1) (-1))
+
+makeLenses ''Pos
+makePrisms ''Pos

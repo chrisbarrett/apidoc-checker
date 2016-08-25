@@ -17,7 +17,6 @@ import qualified Data.Text                    as Text
 import           Text.Parser.LookAhead
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import           Text.Trifecta                hiding (parseString)
-import qualified Text.Trifecta.Delta          as Delta
 
 parseFile :: MonadIO m => FilePath -> m (Either PP.Doc Json)
 parseFile file =
@@ -130,17 +129,7 @@ parseString = do
 
 
 pos :: Parser Pos
-pos = do
-    p <- position
-    case p of
-      Delta.Lines l c _ _ ->
-          pure (Pos (toInteger l) (toInteger c))
-
-      Delta.Directed _ l c _ _ ->
-          pure (Pos (toInteger l) (toInteger c))
-
-      _ ->
-          pure (Pos 0 0)
+pos = Pos <$> position
 
 resultToEither :: Result a -> Either PP.Doc a
 resultToEither (Success x) = Right x

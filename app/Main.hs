@@ -4,10 +4,11 @@
 module Main where
 
 import qualified Apidoc.Check                 as Check
-import qualified Apidoc.Check.Err             as Err
 import qualified Apidoc.Json                  as Json
+import qualified Apidoc.Render                as Render
 import           Control.Lens                 hiding (argument)
 import           Control.Monad                (forM_)
+import qualified Data.ByteString              as Strict
 import qualified Data.Sequence                as Seq
 import           Options.Applicative
 import qualified System.Environment           as Environment
@@ -25,7 +26,8 @@ main = do
 
     results <- runValidator optFile
     case results of
-      Right _ ->
+      Right errs -> do
+        printDoc stderr errs
         printDoc stdout (PP.dullgreen "Finished.")
       Left errs -> do
         forM_ errs (printDoc stderr)
@@ -33,11 +35,13 @@ main = do
         Exit.exitFailure
 
   where
-    runValidator file =
-        bimap Seq.singleton (renderErrs . Check.validate)
-          <$> Json.parseFile file
+    runValidator file = do
+        bs <- Strict.readFile file
+        js <- Json.parseFile file
+        pure (bimap Seq.singleton (renderErrs bs . Check.validate) js)
 
-    renderErrs = over (_Left.traverse) Err.render
+    renderErrs s (Left errs)       = Render.renderErrs s errs
+    renderErrs s (Right (errs, _)) = Render.renderErrs s errs
 
 
 
