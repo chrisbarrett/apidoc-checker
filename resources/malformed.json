@@ -1,0 +1,24 @@
+{
+  "nme": "apidoc spec",
+  "description": "Specification of apidoc api.json schema",
+
+  "info": {
+  },
+
+
+  "unions": {
+    "response_code": {
+      "types": [
+        { "description": "Documents an HTTP status code (e.g. 200, 409, etc.)" }
+      ]
+    }
+  },
+
+  "models": {
+    "apidoc": {
+      "fields": [
+        { "name": "version" }
+      ]
+    }
+  }
+}

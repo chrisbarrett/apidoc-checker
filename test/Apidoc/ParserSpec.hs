@@ -28,7 +28,7 @@ spec = do
             res `shouldSatisfy` is _Right
 
     describe "parsing a malformed apidoc spec" $ do
-        file <- runIO $ Paths.getDataFileName "resources/twitter-timeline.json"
+        file <- runIO $ Paths.getDataFileName "resources/malformed.json"
         js <- runIO $ Json.parseFile file
 
         it "parses JSON successfully" $
