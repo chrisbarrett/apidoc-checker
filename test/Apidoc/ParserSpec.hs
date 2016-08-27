@@ -34,11 +34,11 @@ spec = do
         it "parses JSON successfully" $
             js `shouldSatisfy` is _Right
 
-        let js' = js ^.. _Right._JArray._2._head
-            res = Check.validate (head js')
+        let res = either (error "Parsing json failed") Check.validate js
+
         it "is left" $
             res `shouldSatisfy` is _Left
         it "returns a non-empty list of errors" $
             res ^.. _Left `shouldSatisfy` isn't _Empty
         it "returns many errors" $
-            head (res ^.. _Left.to length) `shouldSatisfy` (> 1)
+            res ^.. _Left.to length `shouldSatisfy` all (> 1)
