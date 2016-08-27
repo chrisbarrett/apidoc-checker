@@ -7,6 +7,7 @@ import           Text.Trifecta.Delta (Delta (..))
 newtype Pos = Pos {_unPos :: Delta}
     deriving (Ord)
 
+-- Equality of AST nodes should ignore source positions.
 instance Eq Pos where
     _ == _ = True
 
