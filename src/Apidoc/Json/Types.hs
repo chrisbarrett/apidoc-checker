@@ -20,4 +20,7 @@ data Object = Object {
 data Key = Key {
     _keyPos   :: !Pos
   , _keyLabel :: !Text
-  } deriving (Show, Eq, Ord)
+  } deriving (Eq, Ord)
+
+instance Show Key where
+    show (Key _ l) = show l
