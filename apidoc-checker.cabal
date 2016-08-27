@@ -31,7 +31,6 @@ library
                      , Apidoc.Json.Parser
                      , Apidoc.Json.Types
                      , Apidoc.Pos
-                     , Control.Applicative.Validation
   build-depends:       base
                      , ansi-wl-pprint
                      , bytestring
@@ -45,6 +44,7 @@ library
                      , parsers
                      , text
                      , trifecta
+                     , validation
   default-language:    Haskell2010
 
 executable apidoc-checker

@@ -7,17 +7,18 @@ module Apidoc.Check
   ) where
 
 import           Apidoc.Check.DSL
-import           Apidoc.Check.Env               as Exports (Env)
-import           Apidoc.Check.Err               as Exports
-import           Apidoc.Check.Lenses            as Exports
+import           Apidoc.Check.Env    as Exports (Env)
+import           Apidoc.Check.Err    as Exports
+import           Apidoc.Check.Lenses as Exports
 import           Apidoc.DSL.Types
 import           Apidoc.Json
-import qualified Control.Applicative.Validation as Validation
-import           Data.Sequence                  (Seq)
-import           Prelude                        hiding (Enum)
+import           Control.Lens        ((^.))
+import           Data.Sequence       (Seq)
+import           Data.Validation     (_Either)
+import           Prelude             hiding (Enum)
 
-validate :: Json -> Either (Seq Err) (Seq Err, Spec)
-validate js = Validation.runValidation (spec js)
+validate :: Json -> Either (Seq Err) Spec
+validate js = spec js ^. _Either
 
 
 spec :: Json -> Check Spec

@@ -1,58 +1,102 @@
 {-# LANGUAGE DeriveFunctor              #-}
-{-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE DeriveTraversable          #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GADTs                      #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedLists            #-}
 {-# LANGUAGE OverloadedStrings          #-}
 module Apidoc.Check.DSL where
 
 import           Apidoc.Check.Err
-import qualified Apidoc.Check.Parsers           as Parsers
-import qualified Apidoc.DSL                     as DSL
-import           Apidoc.Json                    hiding (parseNumber)
-import           Apidoc.Pos                     (Pos)
-import           Control.Applicative.Validation as V
-import           Control.Lens                   hiding ((:<), (:>))
-import           Control.Monad.Reader           (MonadReader, ReaderT)
-import qualified Control.Monad.Reader           as Reader
-import           Control.Monad.Writer           (MonadWriter, WriterT)
-import qualified Control.Monad.Writer           as Writer
+import qualified Apidoc.Check.Parsers as Parsers
+import qualified Apidoc.DSL           as DSL
+import           Apidoc.Json          hiding (parseNumber)
+import           Apidoc.Pos           (Pos)
+import           Control.Lens         hiding ((:<), (:>))
+import           Control.Monad.Reader (MonadReader, ReaderT)
+import qualified Control.Monad.Reader as Reader
+import           Control.Monad.Writer (MonadWriter, WriterT)
+import qualified Control.Monad.Writer as Writer
 import           Data.Foldable
-import           Data.Map                       (Map)
-import qualified Data.Map.Strict                as Map
-import           Data.Sequence                  (Seq, ViewL (..), ViewR (..))
-import qualified Data.Sequence                  as Seq
-import           Data.Set                       (Set)
-import           Data.Text                      (Text)
-import qualified Data.Text                      as Text
-import qualified Network.URI                    as URI
-import           Text.Read                      (readMaybe)
+import           Data.Map             (Map)
+import qualified Data.Map.Strict      as Map
+import           Data.Sequence        (Seq, ViewL (..), ViewR (..))
+import qualified Data.Sequence        as Seq
+import           Data.Set             (Set)
+import           Data.Text            (Text)
+import qualified Data.Text            as Text
+import           Data.Validation
+import qualified Network.URI          as URI
+import           Text.Read            (readMaybe)
 
-type Check a = Validation (Seq Err) a
+-- * Validation transformer stack
 
-newtype CheckObject a = CheckObject (
-      ReaderT Object (WriterT (Set Text) (Validation (Seq Err))) a
-    )
+type Check a = AccValidation (Seq Err) a
+
+-- HACK: Frankenvalidator using Validation's monad instance with AccValidation's
+-- applicative instance.
+newtype AccValidationM e a = AccValidationM {unAccValidationM :: AccValidation e a}
+    deriving (Functor, Applicative, Traversable, Foldable)
+
+instance Monad (AccValidationM (Seq Err)) where
+    AccValidationM (AccFailure err) >>= _ = AccValidationM (AccFailure err)
+    AccValidationM (AccSuccess r)   >>= f = f r
+
+
+instance Validate AccValidationM where
+    _Validation =
+        iso (view _Validation . unAccValidationM)
+            (AccValidationM . view _AccValidation)
+    _AccValidation =
+        iso (view _AccValidation . unAccValidationM)
+            (AccValidationM . view _AccValidation)
+    _Either =
+        iso (view _Either . unAccValidationM)
+            (AccValidationM . view _AccValidation)
+
+newtype CheckObject e a = CheckObject {
+        unCheckObject :: ReaderT Object
+                                 (WriterT (Set Text) (AccValidationM (Seq Err)))
+                                 a
+    }
     deriving ( Functor
              , Applicative
              , Monad
              , MonadWriter (Set Text)
              , MonadReader Object
-             , MonadValidate (Seq Err)
              )
 
-runCheckObject :: CheckObject a -> Object -> (Check a, Set Text)
+type CheckObject' a = CheckObject (Seq Err) a
+
+runCheckObject :: CheckObject (Seq Err) a -> Object -> (Check a, Set Text)
 runCheckObject (CheckObject p) o =
-    case runValidation (Writer.runWriterT (Reader.runReaderT p o)) of
-      Right (e, (r, ks)) -> (Success e r, ks)
-      Left e             -> (failure e, mempty)
+    case unAccValidationM (Writer.runWriterT (Reader.runReaderT p o)) of
+      AccSuccess (r, ks) -> (_Success # r, ks)
+      AccFailure e       -> (_Failure # e, mempty)
+
+
+-- Unfortunately, 'CheckObject' is not isomorphic to the other validation
+-- classes.
+
+successCheckObject :: a -> CheckObject' a
+successCheckObject x = CheckObject (Reader.ReaderT (const (Writer.WriterT (_Success # (x, mempty)))))
+
+failureCheckObject :: Seq Err -> CheckObject' a
+failureCheckObject e = CheckObject (Reader.ReaderT (const (Writer.WriterT (_Failure # e))))
+
+
+-- * Validation DSL implementation
+
+fromMaybe :: Validate v => e -> Maybe a -> v e a
+fromMaybe e Nothing = _Failure # e
+fromMaybe _ (Just x) = _Success # x
 
 typeRef :: Json -> Check DSL.TypeRef
 typeRef js =
-    string js `andThen` parse
+    unAccValidationM (AccValidationM (string js) >>= parse)
   where
-    parse :: Text -> Check DSL.TypeRef
-    parse s = V.fromMaybe [parseErr s] (Parsers.parseTypeRef s)
-    parseErr s = Err (jsonPos js) (UnparseableTypeRef s)
+    parse s = fromMaybe [err s] (Parsers.parseTypeRef s)
+    err s = Err (jsonPos js) (UnparseableTypeRef s)
 
 
 anyJson :: Json -> Check Json
@@ -61,29 +105,26 @@ anyJson = pure
 
 uri :: Json -> Check DSL.Uri
 uri js =
-    string js `andThen` parse
+    unAccValidationM (AccValidationM (string js) >>= parse)
   where
-    parse :: Text -> Check DSL.Uri
-    parse s =
-        let u = DSL.Uri <$> URI.parseURI (Text.unpack s)
-        in V.fromMaybe [parseErr s] u
-
-    parseErr s = Err (jsonPos js) (InvalidUri s)
+    parse s = fromMaybe [err s] (DSL.Uri <$> URI.parseURI (Text.unpack s))
+    err s = Err (jsonPos js) (InvalidUri s)
 
 
 responseCode :: Json -> Check DSL.ResponseCode
 responseCode (JString _ "default") = pure DSL.RespDefault
-responseCode (JString p s) =
-    parseNumber `andThen` validate
+responseCode (JString p str) = unAccValidationM $ do
+    number <- parseNumber str
+    validate number
   where
-    parseNumber =
-        V.fromMaybe [Err p (UnparseableResponseCode s)]
-          (readMaybe (Text.unpack s))
+    parseNumber s = fromMaybe [err s] (readMaybe (Text.unpack s))
+    err s = Err p (UnparseableResponseCode s)
 
+    validate :: Double -> AccValidationM (Seq Err) DSL.ResponseCode
     validate n
       | isInteger n && n >= 200 && n <= 526
-                    = success (DSL.RespInt (round n))
-      | isInteger n = failure [Err p (ResponseCodeOutOfRange (round n))]
+                    = _Success # (DSL.RespInt (round n))
+      | isInteger n = _Failure # [Err p (ResponseCodeOutOfRange (round n))]
       | otherwise   = typeError p (Expected "HTTP response code") (Actual "float")
 
 responseCode js =
@@ -97,20 +138,18 @@ isInteger d =
 
 httpMethod :: Json -> Check DSL.HttpMethod
 httpMethod js =
-    string js `andThen` parse
+    unAccValidationM (AccValidationM (string js) >>= parse)
   where
-    parse :: Text -> Check DSL.HttpMethod
-    parse s = V.fromMaybe [parseErr s] (readMaybe (Text.unpack s))
-    parseErr s = Err (jsonPos js) (InvalidHttpMethod s)
+    parse s = fromMaybe [err s] (readMaybe (Text.unpack s))
+    err s = Err (jsonPos js) (InvalidHttpMethod s)
 
 
 paramLocation :: Json -> Check DSL.ParameterLocation
 paramLocation js =
-    string js `andThen` parse
+    unAccValidationM (AccValidationM (string js) >>= parse)
   where
-    parse :: Text -> Check DSL.ParameterLocation
-    parse s = V.fromMaybe [parseErr s](readMaybe (Text.unpack s))
-    parseErr s = Err (jsonPos js) (InvalidParameterLocation s)
+    parse s = fromMaybe [err s] (readMaybe (Text.unpack s))
+    err s = Err (jsonPos js) (InvalidParameterLocation s)
 
 
 string :: Json -> Check Text
@@ -134,20 +173,21 @@ int js =
 
 -- |Parse the given 'Json' value to an object, then apply a validation function.
 -- Push errors into the context if there are duplicate keys.
-object :: CheckObject a -> Json -> Check a
+object :: CheckObject' a -> Json -> Check a
 object f (JObject _ obj) =
     let keys = obj ^.. objectContent.traverse._1
     in checkNoDuplicates keys *> validate keys
   where
     validate keys =
+        unAccValidationM $
         let (parser, expectedKeys) = runCheckObject f obj
-        in parser `andThen` \r ->
+        in do
+            r <- AccValidationM parser
             traverse_ (checkInExpected expectedKeys) keys *> pure r
 
-    checkInExpected :: Set Text -> Key -> Check ()
     checkInExpected ks (Key p k)
-        | k `elem` ks = success ()
-        | otherwise   = failure [Err p (UnexpectedKey k)]
+        | k `elem` ks = _Success # ()
+        | otherwise   = _Failure # [Err p (UnexpectedKey k)]
 
     checkNoDuplicates :: [Key] -> Check ()
     checkNoDuplicates ks =
@@ -156,13 +196,13 @@ object f (JObject _ obj) =
           & Map.filter ((>) 1 . length)
           & Map.map Seq.sort
           & Map.elems
-          & traverse_ (warnOnDups . Seq.viewl)
+          & traverse_ (errOnDups . Seq.viewl)
 
-    warnOnDups :: ViewL Key -> Check ()
-    warnOnDups EmptyL         = pure mempty
-    warnOnDups (decl :< dups) =
+    errOnDups :: ViewL Key -> Check ()
+    errOnDups EmptyL         = pure mempty
+    errOnDups (decl :< dups) =
         for_ dups $ \dup ->
-          warning [Err (dup ^. keyPos) (DuplicateKey decl dup)] dup
+          _Failure # [Err (dup ^. keyPos) (DuplicateKey decl dup)]
 
 object _ js =
     typeError (jsonPos js) (Expected "object") (Actual (typeOf js))
@@ -202,35 +242,33 @@ array _ js =
 
 -- |Parse a required attribute on a JSON object. If there are multiple
 -- declarations under the same key, validate all of them and return the last.
-required :: Text -> (Json -> Check a) -> CheckObject a
+required :: Text -> (Json -> Check a) -> CheckObject' a
 required k f = do
     o <- Reader.ask
     r <- optional k f
     case r of
-      Just res -> pure res
-      Nothing -> failure [Err (o ^. objectPos) (RequiredKeyMissing k)]
+      Just x  -> successCheckObject x
+      Nothing -> failureCheckObject [Err (o ^. objectPos) (RequiredKeyMissing k)]
 
 
 -- |Parse an optional attribute on a JSON object. If there are multiple
 -- declarations under the same key, validate all of them and return the last.
-optional :: Text -> (Json -> Check a) -> CheckObject (Maybe a)
+optional :: Text -> (Json -> Check a) -> CheckObject' (Maybe a)
 optional k f = do
     Writer.tell [k]
     obj <- Reader.ask
-    res <-
-        obj ^. objectContent
-          & Seq.filter ((==) k . view (_1.keyLabel))
-          & fmap snd
-          & Seq.viewr
-          & validateAllEntries
-    case res of
-      Success e r -> warning e r
-      Failure e   -> failure e
-  where
-    validateAllEntries EmptyR    = pure (success Nothing)
-    validateAllEntries (es :> e) = pure (traverse_ f es *> fmap Just (f e))
+    let entries = obj ^. objectContent
+                    & Seq.filter ((==) k . view (_1.keyLabel))
+                    & fmap snd
+                    & Seq.viewr
+    case entries of
+      EmptyR -> successCheckObject Nothing
+      xs :> x ->
+          pure (traverse f xs) *>
+            case f x of
+              AccSuccess r -> successCheckObject (Just r)
+              AccFailure e -> failureCheckObject e
 
-
-typeError :: Pos -> Expected -> Actual -> Check a
+typeError :: Validate v => Pos -> Expected -> Actual -> v (Seq Err) a
 typeError p expected actual =
-    failure [Err p (TypeError expected actual)]
+    _Failure # [Err p (TypeError expected actual)]
