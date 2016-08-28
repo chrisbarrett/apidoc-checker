@@ -21,7 +21,7 @@ data Opts = Opts {
   }
 
 desc prog = fullDesc
-    <> header (prog ++ " - apidoc spec validator")
+    <> header (prog <> " - apidoc spec validator")
     <> progDesc "Validates an apidoc JSON specification"
 
 flags = Opts
