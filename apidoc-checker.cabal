@@ -15,18 +15,32 @@ data-files:          resources/*.json
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Apidoc.DSL
+  ghc-options:         -Wall
+  exposed-modules:     Apidoc.Check
+                     , Apidoc.Check.Err
+                     , Apidoc.Check.Env
+                     , Apidoc.Check.DSL
+                     , Apidoc.Check.Lenses
+                     , Apidoc.Check.Parsers
+                     , Apidoc.Render
+                     , Apidoc.DSL
+                     , Apidoc.DSL.Lenses
+                     , Apidoc.DSL.Types
                      , Apidoc.Json
-                     , Apidoc.Parser
-  other-modules:       Apidoc.Orphans
+                     , Apidoc.Json.Lenses
+                     , Apidoc.Json.Parser
+                     , Apidoc.Json.Types
+                     , Apidoc.Pos
   build-depends:       base
                      , ansi-wl-pprint
                      , bytestring
                      , containers
                      , edit-distance
+                     , free
                      , lens
                      , mtl
                      , network-uri
+                     , semigroups
                      , parsers
                      , text
                      , trifecta
@@ -36,15 +50,17 @@ library
 executable apidoc-checker
   hs-source-dirs:      app
   main-is:             Main.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall
   build-depends:       base
                      , ansi-wl-pprint
                      , apidoc-checker
-                     , bytestring
+                     , containers
+                     , lens
+                     , mtl
                      , optparse-applicative
                      , text
                      , trifecta
-                     , validation
+                     , utf8-string
   default-language:    Haskell2010
 
 test-suite apidoc-checker-test
@@ -56,7 +72,9 @@ test-suite apidoc-checker-test
                      , bytestring
                      , containers
                      , hspec
-                     , validation
+                     , lens
+  other-modules:       Apidoc.JsonSpec
+                     , Apidoc.ParserSpec
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 
