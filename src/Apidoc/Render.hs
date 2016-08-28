@@ -14,7 +14,7 @@ import           Debug.Trace
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import qualified Text.Trifecta                as Trifecta
 
-renderErrs :: (Traversable f, Foldable f) => ByteString -> f Err -> PP.Doc
+renderErrs :: Traversable f => ByteString -> f Err -> PP.Doc
 renderErrs bs es =
     trace ("Render errors: " <> show (es ^.. traverse.errPos._Pos)) $ do
     PP.vcat (renderErr <$> Foldable.toList es)
