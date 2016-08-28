@@ -6,22 +6,20 @@ import           Apidoc.Check.Lenses
 import           Apidoc.Json.Lenses
 import           Apidoc.Pos
 import           Control.Lens
-import           Data.ByteString              (ByteString)
-import           Data.Foldable                as Foldable
+import qualified Data.Foldable                as Foldable
 import           Data.Monoid                  ((<>))
 import qualified Data.Text                    as Text
-import           Debug.Trace
 import qualified Text.PrettyPrint.ANSI.Leijen as PP
 import qualified Text.Trifecta                as Trifecta
 
-renderErrs :: Traversable f => ByteString -> f Err -> PP.Doc
-renderErrs bs es =
-    trace ("Render errors: " <> show (es ^.. traverse.errPos._Pos)) $ do
+renderErrs :: Traversable f => f Err -> PP.Doc
+renderErrs es =
     PP.vcat (renderErr <$> Foldable.toList es)
   where
     renderErr :: Err -> PP.Doc
     renderErr e =
-        let r = Trifecta.renderingCaret (e ^. errPos._Pos) bs
+        -- TODO: Show error context once I figure out how to render that properly.
+        let r = mempty & Trifecta.renderingDelta .~ (e ^. errPos._Pos)
         in Trifecta.explain r (toTrifectaErr e) <> PP.line
 
     toTrifectaErr e = mempty & Trifecta.reason .~ Just (note e)

@@ -8,7 +8,6 @@ import qualified Apidoc.Json                  as Json
 import qualified Apidoc.Render                as Render
 import           Control.Monad.Reader         as Reader
 import qualified Data.Bifunctor               as Bifunctor
-import qualified Data.ByteString              as Strict
 import           Options.Applicative          as Options
 import qualified System.Environment           as Environment
 import qualified System.Exit                  as Exit
@@ -47,9 +46,8 @@ main = do
 
     validateFile = do
         Opts {optFile = f} <- Reader.ask
-        bs <- liftIO (Strict.readFile f)
         js <- liftIO (Json.parseFile f)
-        pure (js >>= Bifunctor.first (Render.renderErrs bs) . Check.validate)
+        pure (js >>= Bifunctor.first Render.renderErrs . Check.validate)
 
     printDoc h d = do
         Opts {optNoColour = noColour} <- Reader.ask

@@ -54,7 +54,6 @@ executable apidoc-checker
   build-depends:       base
                      , ansi-wl-pprint
                      , apidoc-checker
-                     , bytestring
                      , containers
                      , lens
                      , mtl
