@@ -36,12 +36,12 @@ main = do
     Reader.runReaderT (validateFile >>= either reject accept) os
   where
     accept _ = do
-        printDoc IO.stdout (PP.dullgreen "Finished with no errors.")
+        printDoc IO.stdout (PP.dullgreen "Validation succeeded.")
         liftIO Exit.exitSuccess
 
     reject errs = do
         printDoc IO.stderr errs
-        printDoc IO.stdout (PP.red "Malformed apidoc spec.")
+        printDoc IO.stdout (PP.line <> PP.red "Apidoc spec was malformed. Validation failed.")
         liftIO Exit.exitFailure
 
     validateFile = do

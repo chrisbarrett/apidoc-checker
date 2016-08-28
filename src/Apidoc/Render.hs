@@ -20,7 +20,7 @@ renderErrs es =
     renderErr e =
         -- TODO: Show error context once I figure out how to render that properly.
         let r = mempty & Trifecta.renderingDelta .~ (e ^. errPos._Pos)
-        in Trifecta.explain r (toTrifectaErr e) <> PP.line
+        in Trifecta.explain r (toTrifectaErr e)
 
     toTrifectaErr e = mempty & Trifecta.reason .~ Just (note e)
 
