@@ -133,7 +133,7 @@ pos = Pos <$> position
 
 resultToEither :: Result a -> Either PP.Doc a
 resultToEither (Success x) = Right x
-resultToEither (Failure e) = Left e
+resultToEither (Failure e) = Left (_errDoc e)
 
 typeOf :: Json -> Text
 typeOf JObject {} = "object"
