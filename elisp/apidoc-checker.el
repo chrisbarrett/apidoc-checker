@@ -35,8 +35,8 @@
   :command ("apidoc-checker" "--plain" source)
   :predicate
   (lambda ()
-    (or (equal "api.json" (buffer-name))
-        (equal "apidoc.json" (buffer-name))))
+    (let ((filename (file-name-nondirectory (buffer-file-name))))
+      (member filename '("api.json" "apidoc.json"))))
   :error-patterns
   ((error line-start (file-name) ":" line ":" column ": error: " (message) line-end)
    (warning line-start (file-name) ":" line ":" column ": warning: " (message) line-end)
