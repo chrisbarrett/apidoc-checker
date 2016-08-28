@@ -5,6 +5,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedLists            #-}
 {-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE ViewPatterns               #-}
 module Apidoc.Check.DSL where
 
 import           Apidoc.Check.Err
@@ -18,8 +19,10 @@ import qualified Control.Monad.Reader as Reader
 import           Control.Monad.Writer (MonadWriter, WriterT)
 import qualified Control.Monad.Writer as Writer
 import           Data.Foldable
+import qualified Data.List            as List
 import           Data.Map             (Map)
 import qualified Data.Map.Strict      as Map
+import qualified Data.Maybe           as Maybe
 import           Data.Sequence        (Seq, ViewL (..), ViewR (..))
 import qualified Data.Sequence        as Seq
 import           Data.Set             (Set)
@@ -27,6 +30,7 @@ import           Data.Text            (Text)
 import qualified Data.Text            as Text
 import           Data.Validation
 import qualified Network.URI          as URI
+import qualified Text.EditDistance    as EditDistance
 import           Text.Read            (readMaybe)
 
 -- * Validation transformer stack
@@ -187,7 +191,7 @@ object f (JObject _ obj) =
 
     checkInExpected ks (Key p k)
         | k `elem` ks = _Success # ()
-        | otherwise   = _Failure # [Err p (UnexpectedKey k)]
+        | otherwise   = _Failure # [Err p (UnexpectedKey k (suggestion k ks))]
 
     checkNoDuplicates :: [Key] -> Check ()
     checkNoDuplicates ks =
@@ -207,6 +211,19 @@ object f (JObject _ obj) =
 object _ js =
     typeError (jsonPos js) (Expected "object") (Actual (typeOf js))
 
+
+suggestion :: Foldable f => Text -> f Text -> Maybe Text
+suggestion t ks =
+    let distances = fmap (\s -> (distance t s, s)) (toList ks)
+        best = Maybe.listToMaybe $ List.sortOn fst distances
+    in case best of
+         Just (score, c) | score < maximumEditDistance -> Just c
+         _ -> Nothing
+  where
+    maximumEditDistance = 5
+
+    distance (Text.unpack -> t1) (Text.unpack -> t2) =
+        EditDistance.restrictedDamerauLevenshteinDistance EditDistance.defaultEditCosts t1 t2
 
 -- |Parse the given 'Json' value to a map, applying validation functions over
 -- the keys and values.

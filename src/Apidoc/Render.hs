@@ -34,8 +34,11 @@ renderErrs es =
         RequiredKeyMissing k ->
             "Missing required key: ‘" <> text k <> "’."
 
-        UnexpectedKey k ->
+        UnexpectedKey k Nothing ->
             "Unexpected key: ‘" <> text k <> "’."
+
+        UnexpectedKey k (Just s) ->
+            "Unexpected key: ‘" <> text k <> "’. Did you mean ‘" <> text s <> "’?"
 
         InvalidUri _ ->
             "Invalid URI."

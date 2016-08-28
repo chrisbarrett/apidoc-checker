@@ -12,7 +12,9 @@ newtype Actual = Actual {_actualLabel :: Text}
 
 data ErrType = TypeError Expected Actual
              | RequiredKeyMissing Text
-             | UnexpectedKey Text
+             | UnexpectedKey
+                  Text         -- ^ Found key
+                  (Maybe Text) -- ^ Suggestion
              | InvalidUri Text
              | InvalidHttpMethod Text
              | InvalidParameterLocation Text
