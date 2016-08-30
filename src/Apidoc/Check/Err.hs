@@ -16,8 +16,12 @@ data ErrType = TypeError Expected Actual
                   Text         -- ^ Found key
                   (Maybe Text) -- ^ Suggestion
              | InvalidUri Text
-             | InvalidHttpMethod Text
-             | InvalidParameterLocation Text
+             | InvalidHttpMethod
+                   Text         -- ^ Actual method
+                   (Maybe Text) -- ^ Suggestion
+             | InvalidParameterLocation
+                   Text         -- ^ Actual location
+                   (Maybe Text) -- ^ Suggestion
              | ResponseCodeOutOfRange Integer
              | UnparseableResponseCode Text
              | UnparseableTypeRef Text

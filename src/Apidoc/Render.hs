@@ -26,39 +26,49 @@ renderErrs es =
 
     text = PP.text . Text.unpack
 
-    quoted s = "‘" <> s <> "’"
+    quoted s = text ("‘" <> s <> "’")
+    quoted' s = PP.text ("‘" <> s <> "’")
 
     note err = case err ^. errType of
 
         TypeError (Expected e) (Actual a) ->
-            "Type error. Expected: " <> text (quoted e) <> ", but got: " <> text (quoted a) <> "."
+            "Type error. Expected " <> quoted e <> ", but got " <> quoted a <> "."
 
         RequiredKeyMissing k ->
-            "Missing required key: " <> text (quoted k) <> "."
+            "Missing required key: " <> quoted k <> "."
 
         UnexpectedKey k Nothing ->
-            "Unexpected key: " <> text (quoted k) <> "."
+            "Unexpected key: " <> quoted k <> "."
 
         UnexpectedKey k (Just s) ->
-            "Unexpected key: " <> text (quoted k) <> ". Did you mean " <> text (quoted s) <> "?"
+            "Unexpected key: " <> quoted k <> ". Did you mean " <> quoted s <> "?"
 
         InvalidUri {} ->
             "Invalid URI."
 
-        InvalidHttpMethod m ->
-            "Invalid HTTP method: " <> text (quoted m) <> "."
+        InvalidHttpMethod m (Just s) ->
+            "Invalid HTTP method: " <> quoted m <> ". Did you mean " <> quoted s <> "?"
 
-        InvalidParameterLocation loc ->
-            "Invalid parameter location: " <> text (quoted loc) <> "."
+        InvalidHttpMethod m Nothing ->
+            "Invalid HTTP method: " <> quoted m <> ". "
+            <> "Expected a standard HTTP method like " <> quoted "GET" <> ", " <> quoted "PUT"
+            <> quoted "POST" <> ", " <> quoted "DELETE" <> ", etc."
+
+        InvalidParameterLocation loc (Just s) ->
+            "Invalid parameter location: " <> quoted loc <> ". Did you mean " <> quoted s <> "?"
+
+        InvalidParameterLocation loc Nothing ->
+            "Invalid parameter location: " <> quoted loc <> ". "
+            <> "Expected " <> quoted "path" <> ", " <> quoted "query" <> " or " <> quoted "form" <> "."
 
         ResponseCodeOutOfRange n ->
-            "Response code out of range: " <> PP.text (quoted (show n)) <> "."
+            "Response code out of range: " <> quoted' (show n) <> "."
 
         UnparseableResponseCode s ->
-            "Invalid response code: " <> text (quoted s) <> "."
+            "Invalid response code: " <> quoted s <> "."
 
         UnparseableTypeRef t ->
-            "Invalid type name: " <> text (quoted t) <> "."
+            "Invalid type name: " <> quoted t <> "."
 
         DuplicateKey _ dup ->
-            "Duplicated key: " <> text (quoted (dup ^. keyLabel)) <> "."
+            "Duplicated key: " <> quoted (dup ^. keyLabel) <> "."

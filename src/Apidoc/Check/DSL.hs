@@ -145,7 +145,8 @@ httpMethod js =
     unAccValidationM (AccValidationM (string js) >>= parse)
   where
     parse s = fromMaybe [err s] (readMaybe (Text.unpack s))
-    err s = Err (jsonPos js) (InvalidHttpMethod s)
+    err s = Err (jsonPos js) (InvalidHttpMethod s (suggestion s methods))
+    methods = ["GET" , "POST" , "PUT" , "PATCH" , "DELETE" , "HEAD" , "CONNECT" , "OPTIONS" , "TRACE"]
 
 
 paramLocation :: Json -> Check DSL.ParameterLocation
@@ -157,7 +158,9 @@ paramLocation js =
           "path"  -> _Success # DSL.Path
           "query" -> _Success # DSL.Query
           "form"  -> _Success # DSL.Form
-          _       -> _Failure # [Err (jsonPos js) (InvalidParameterLocation s)]
+          _       -> _Failure # [Err (jsonPos js) (InvalidParameterLocation s (suggestion s locations))]
+
+    locations = ["path", "query", "form"]
 
 
 string :: Json -> Check Text
@@ -216,7 +219,7 @@ object _ js =
     typeError (jsonPos js) (Expected "object") (Actual (typeOf js))
 
 
-suggestion :: Foldable f => Text -> f Text -> Maybe Text
+suggestion :: Text -> Set Text -> Maybe Text
 suggestion t ks =
     let distances = fmap (\s -> (distance t s, s)) (toList ks)
         best = Maybe.listToMaybe $ List.sortOn fst distances
