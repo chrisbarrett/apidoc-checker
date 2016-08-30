@@ -152,8 +152,12 @@ paramLocation :: Json -> Check DSL.ParameterLocation
 paramLocation js =
     unAccValidationM (AccValidationM (string js) >>= parse)
   where
-    parse s = fromMaybe [err s] (readMaybe (Text.unpack s))
-    err s = Err (jsonPos js) (InvalidParameterLocation s)
+    parse s =
+        case s of
+          "path"  -> _Success # DSL.Path
+          "query" -> _Success # DSL.Query
+          "form"  -> _Success # DSL.Form
+          _       -> _Failure # [Err (jsonPos js) (InvalidParameterLocation s)]
 
 
 string :: Json -> Check Text

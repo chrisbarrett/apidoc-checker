@@ -200,4 +200,4 @@ data Parameter = Parameter {
   } deriving (Show, Eq)
 
 data ParameterLocation = Path | Query | Form
-  deriving (Show, Eq, Ord, Read)
+  deriving (Eq, Ord, Show)
