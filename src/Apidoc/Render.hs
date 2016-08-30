@@ -26,37 +26,39 @@ renderErrs es =
 
     text = PP.text . Text.unpack
 
+    quoted s = "‘" <> s <> "’"
+
     note err = case err ^. errType of
 
         TypeError (Expected e) (Actual a) ->
-            "Type error. Expected: ‘" <> text e <> "’, but got: ‘" <> text a <> "’."
+            "Type error. Expected: " <> text (quoted e) <> ", but got: " <> text (quoted a) <> "."
 
         RequiredKeyMissing k ->
-            "Missing required key: ‘" <> text k <> "’."
+            "Missing required key: " <> text (quoted k) <> "."
 
         UnexpectedKey k Nothing ->
-            "Unexpected key: ‘" <> text k <> "’."
+            "Unexpected key: " <> text (quoted k) <> "."
 
         UnexpectedKey k (Just s) ->
-            "Unexpected key: ‘" <> text k <> "’. Did you mean ‘" <> text s <> "’?"
+            "Unexpected key: " <> text (quoted k) <> ". Did you mean " <> text (quoted s) <> "?"
 
-        InvalidUri _ ->
+        InvalidUri {} ->
             "Invalid URI."
 
         InvalidHttpMethod m ->
-            "Invalid HTTP method: ‘" <> text m <> "’."
+            "Invalid HTTP method: " <> text (quoted m) <> "."
 
         InvalidParameterLocation loc ->
-            "Invalid parameter location: ‘" <> text loc <> "’."
+            "Invalid parameter location: " <> text (quoted loc) <> "."
 
         ResponseCodeOutOfRange n ->
-            "Response code out of range: ‘" <> PP.text (show n) <> "’."
+            "Response code out of range: " <> PP.text (quoted (show n)) <> "."
 
         UnparseableResponseCode s ->
-            "Invalid response code: ‘" <> text s <> "’."
+            "Invalid response code: " <> text (quoted s) <> "."
 
         UnparseableTypeRef t ->
-            "Invalid type: ‘" <> text t <> "’."
+            "Invalid type name: " <> text (quoted t) <> "."
 
         DuplicateKey _ dup ->
-            "Duplicated key: ‘" <> text (dup ^. keyLabel) <> "’."
+            "Duplicated key: " <> text (quoted (dup ^. keyLabel)) <> "."
