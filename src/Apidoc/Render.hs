@@ -62,13 +62,13 @@ renderErrs es =
             <> "Expected " <> quoted "path" <> ", " <> quoted "query" <> " or " <> quoted "form" <> "."
 
         ResponseCodeOutOfRange n ->
-            "Response code out of range: " <> quoted' (show n) <> "."
+            "Response code out of range: " <> quoted' (show n) <> ". Expected a number between 200 and 526."
 
         UnparseableResponseCode s ->
-            "Invalid response code: " <> quoted s <> "."
+            "Invalid response code: " <> quoted s <> ". Expected a number between 200 and 526."
 
         UnparseableTypeRef t ->
-            "Invalid type name: " <> quoted t <> "."
+            "Invalid type: " <> quoted t <> "."
 
         DuplicateKey _ dup ->
-            "Duplicated key: " <> quoted (dup ^. keyLabel) <> "."
+            "Duplicated key: " <> quoted (dup ^. keyLabel) <> ". A key should occur at most once."
