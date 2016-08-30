@@ -38,9 +38,12 @@
     (let ((filename (file-name-nondirectory (buffer-file-name))))
       (member filename '("api.json" "apidoc.json"))))
   :error-patterns
-  ((error line-start (file-name) ":" line ":" column ": error: " (message) line-end)
-   (warning line-start (file-name) ":" line ":" column ": warning: " (message) line-end)
-   (info line-start (file-name) ":" line ":" column ": note: " (message) line-end))
+  ((error line-start (file-name) ":" line ":" column ": error: "
+          (message (one-or-more not-newline)
+                   (zero-or-more "\n"
+                                 (one-or-more "  ")
+                                 (one-or-more not-newline)))
+          line-end))
   :modes (js-mode js2-mode))
 
 (add-to-list 'flycheck-checkers 'apidoc)
